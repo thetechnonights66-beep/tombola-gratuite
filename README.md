@@ -44,6 +44,7 @@ git clone https://github.com/votre-nom/tombola-gratuite.git
 cd tombola-gratuite
 
 # 3. Installer les dépendances
+
 npm install
 
 # 4. Démarrer en mode développement
