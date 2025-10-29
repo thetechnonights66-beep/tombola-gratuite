@@ -30,7 +30,7 @@ const Home = () => {
         
         <div className="text-center mt-12">
           <button 
-            onClick={() => window.location.href = '/buy'}
+            onClick={() => (window.location.hash = '#/buy')}
             className="bg-yellow-500 text-purple-900 px-8 py-4 rounded-full text-xl font-bold hover:bg-yellow-400 transition"
           >
             Acheter mes tickets 🎫
