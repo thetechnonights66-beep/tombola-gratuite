@@ -1,11 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  min-height: 100vh;
 }
 
-#root {
-  padding: 20px;
+/* Styles temporaires pour vérifier que Tailwind fonctionne */
+.test-tailwind {
+  @apply bg-blue-500 text-white p-4 rounded-lg;
 }
