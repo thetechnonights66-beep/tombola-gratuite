@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 const BuyTickets = () => {
   const [ticketCount, setTicketCount] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState('card');
-  const navigate = useNavigate();
 
   const handlePurchase = () => {
-    // Simulation d'achat réussi
-    navigate('/confirmation');
+    alert(`Achat simulé de ${ticketCount} ticket(s) pour ${ticketCount * 5}€ !`);
+    window.location.hash = '#/';
   };
 
   return (
