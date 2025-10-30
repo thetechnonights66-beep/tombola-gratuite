@@ -5,13 +5,33 @@ const AdminPanel = () => {
   const [winners, setWinners] = useState([]);
   const [isDrawing, setIsDrawing] = useState(false);
   
-  // ✅ DÉFINIR LES LOTS DISPONIBLES
+  // ✅ LOTS AVEC DESCRIPTIONS DÉTAILLÉES
   const [availablePrizes] = useState([
-    "PlayStation 5",
-    "MacBook Air", 
-    "iPhone 15",
-    "Weekend à Paris",
-    "Cadeau surprise"
+    { 
+      name: "Voiture Tesla", 
+      description: "Tesla Model 3 neuve - Autonomie 500km",
+      image: "https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=150&h=100&fit=crop"
+    },
+    { 
+      name: "Voyage aux Maldives", 
+      description: "7 nuits tout inclus dans un resort 5 étoiles",
+      image: "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=150&h=100&fit=crop"
+    },
+    { 
+      name: "Bague en diamant", 
+      description: "Bague en or blanc avec diamant 1 carat",
+      image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=150&h=100&fit=crop"
+    },
+    { 
+      name: "Guitare Fender", 
+      description: "Fender Stratocaster - Édition limitée",
+      image: "https://images.unsplash.com/photo-1558098329-a11cff621064?w=150&h=100&fit=crop"
+    },
+    { 
+      name: "Carte cadeau Amazon", 
+      description: "Carte cadeau utilisable sur tous les produits Amazon",
+      image: "https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?w=150&h=100&fit=crop"
+    }
   ]);
 
   useEffect(() => {
@@ -42,7 +62,8 @@ const AdminPanel = () => {
       setWinners([...winners, {
         participant: winner.name,
         ticketNumber: winningNumber,
-        prize: prize,
+        prize: prize.name,
+        prizeDescription: prize.description,
         time: new Date().toLocaleTimeString()
       }]);
       setIsDrawing(false);
@@ -54,7 +75,6 @@ const AdminPanel = () => {
       <div className="max-w-6xl mx-auto">
         <h1 className="text-4xl font-bold mb-8">🎮 Panel Admin Tombola</h1>
         
-        {/* ✅ STATISTIQUES AVEC LOTS */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-blue-600 p-4 rounded-lg">
             <div className="text-2xl font-bold">{participants.length}</div>
@@ -76,17 +96,29 @@ const AdminPanel = () => {
           </div>
         </div>
 
-        {/* ✅ SECTION LOTS DISPONIBLES */}
+        {/* ✅ SECTION LOTS AMÉLIORÉE */}
         <div className="bg-gray-800 rounded-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-4">🎁 Lots à gagner</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {availablePrizes.map((prize, index) => (
-              <div key={index} className={`p-3 rounded text-center ${
-                index < winners.length ? 'bg-green-600' : 'bg-blue-600'
+              <div key={index} className={`p-4 rounded-lg border ${
+                index < winners.length ? 'bg-green-600 border-green-400' : 'bg-gray-700 border-gray-600'
               }`}>
-                <div className="font-semibold">{prize}</div>
-                <div className="text-sm">
-                  {index < winners.length ? '🎉 Attribué' : '📦 Disponible'}
+                <div className="flex items-start gap-3">
+                  <img 
+                    src={prize.image} 
+                    alt={prize.name}
+                    className="w-16 h-16 rounded object-cover"
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-lg">{prize.name}</div>
+                    <div className="text-sm text-gray-300 mt-1">{prize.description}</div>
+                    <div className={`text-xs mt-2 ${
+                      index < winners.length ? 'text-green-200' : 'text-yellow-300'
+                    }`}>
+                      {index < winners.length ? '✅ Attribué' : '📦 En attente'}
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
@@ -117,13 +149,14 @@ const AdminPanel = () => {
         {winners.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-6 mb-8">
             <h2 className="text-2xl font-bold mb-4">🏆 Gagnants</h2>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {winners.map((winner, index) => (
                 <div key={index} className="bg-green-600 p-4 rounded-lg">
                   <div className="font-semibold text-lg">{winner.participant}</div>
-                  <div>Ticket #{winner.ticketNumber}</div>
-                  <div className="text-yellow-300 font-bold">🎁 {winner.prize}</div>
-                  <div className="text-sm text-green-200">{winner.time}</div>
+                  <div className="text-gray-200">Ticket #{winner.ticketNumber}</div>
+                  <div className="text-yellow-300 font-bold text-xl mt-1">🎁 {winner.prize}</div>
+                  <div className="text-sm text-green-200 mt-1">{winner.prizeDescription}</div>
+                  <div className="text-xs text-green-300 mt-2">{winner.time}</div>
                 </div>
               ))}
             </div>
