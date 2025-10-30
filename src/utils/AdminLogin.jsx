@@ -1,64 +1,152 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Auth } from '../utils/auth';
 
-const AdminLogin = () => {
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-
-  const handleLogin = (e) => {
-    e.preventDefault();
-    
-    if (Auth.login(password)) {
-      window.location.hash = '#/admin';
-    } else {
-      setError('Mot de passe incorrect');
+const AdminPanel = () => {
+  const [participants, setParticipants] = useState([]);
+  const [winners, setWinners] = useState([]);
+  const [isDrawing, setIsDrawing] = useState(false);
+  
+  // Vérifier l'authentification au chargement
+  useEffect(() => {
+    if (!Auth.requireAuth()) {
+      return;
     }
+
+    const mockParticipants = Array.from({ length: 50 }, (_, i) => ({
+      id: i + 1,
+      name: `Participant ${i + 1}`,
+      email: `participant${i + 1}@email.com`,
+      tickets: Math.floor(Math.random() * 5) + 1,
+      numbers: Array.from({ length: 5 }, () => Math.floor(Math.random() * 1000))
+    }));
+    setParticipants(mockParticipants);
+  }, []);
+
+  const startDraw = () => {
+    if (!Auth.isAuthenticated()) {
+      window.location.hash = '#/admin-login';
+      return;
+    }
+
+    setIsDrawing(true);
+    
+    setTimeout(() => {
+      const winnerIndex = Math.floor(Math.random() * participants.length);
+      const winner = participants[winnerIndex];
+      const winningNumber = winner.numbers[Math.floor(Math.random() * winner.numbers.length)];
+      
+      setWinners([...winners, {
+        participant: winner.name,
+        ticketNumber: winningNumber,
+        prize: `Lot ${winners.length + 1}`,
+        time: new Date().toLocaleTimeString()
+      }]);
+      setIsDrawing(false);
+    }, 3000);
   };
 
+  const handleLogout = () => {
+    Auth.logout();
+    window.location.hash = '#/';
+  };
+
+  // Si non authentifié, ne rien afficher (redirection automatique)
+  if (!Auth.isAuthenticated()) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-700 flex items-center justify-center py-8">
-      <div className="max-w-md w-full mx-4">
-        <div className="bg-white rounded-lg shadow-xl p-8">
-          <div className="text-center mb-8">
-            <div className="text-4xl mb-4">🔐</div>
-            <h1 className="text-3xl font-bold text-gray-800">Accès Admin</h1>
-            <p className="text-gray-600 mt-2">Page réservée au concepteur</p>
+    <div className="min-h-screen bg-gray-900 text-white p-8">
+      <div className="max-w-6xl mx-auto">
+        {/* En-tête avec bouton de déconnexion */}
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold">🎮 Panel Admin Tombola</h1>
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-semibold"
+          >
+            Déconnexion
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-blue-600 p-4 rounded-lg">
+            <div className="text-2xl font-bold">{participants.length}</div>
+            <div>Participants</div>
           </div>
-
-          <form onSubmit={handleLogin}>
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mot de passe administrateur
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setError('');
-                }}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Entrez le mot de passe"
-                autoFocus
-              />
-              {error && (
-                <p className="text-red-500 text-sm mt-2">{error}</p>
-              )}
+          <div className="bg-green-600 p-4 rounded-lg">
+            <div className="text-2xl font-bold">
+              {participants.reduce((sum, p) => sum + p.tickets, 0)}
             </div>
+            <div>Tickets vendus</div>
+          </div>
+          <div className="bg-purple-600 p-4 rounded-lg">
+            <div className="text-2xl font-bold">{winners.length}</div>
+            <div>Gagnants</div>
+          </div>
+          <div className="bg-yellow-600 p-4 rounded-lg">
+            <div className="text-2xl font-bold">
+              {participants.reduce((sum, p) => sum + p.tickets * 5, 0)}€
+            </div>
+            <div>Recettes totales</div>
+          </div>
+        </div>
 
-            <button
-              type="submit"
-              className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition"
-            >
-              Se connecter
-            </button>
-          </form>
+        <div className="text-center mb-8">
+          <button
+            onClick={startDraw}
+            disabled={isDrawing || participants.length === 0}
+            className={`px-8 py-4 rounded-full text-xl font-bold ${
+              isDrawing ? 'bg-gray-600' : 'bg-red-500 hover:bg-red-600'
+            }`}
+          >
+            {isDrawing ? '🎲 Tirage en cours...' : '🎯 Lancer le tirage'}
+          </button>
+        </div>
 
-          <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
-            <p className="text-sm text-yellow-800">
-              <strong>Note :</strong> Cette page est réservée au concepteur de l'application.
-              Si vous n'êtes pas le concepteur, merci de retourner à <a href="#/" className="text-blue-600 hover:underline">l'accueil</a>.
-            </p>
+        {isDrawing && (
+          <div className="text-center my-8">
+            <div className="text-6xl animate-bounce mb-4">🎰</div>
+            <p className="text-xl">Tirage au sort en cours...</p>
+          </div>
+        )}
+
+        {winners.length > 0 && (
+          <div className="bg-gray-800 rounded-lg p-6 mb-8">
+            <h2 className="text-2xl font-bold mb-4">🏆 Gagnants</h2>
+            <div className="space-y-3">
+              {winners.map((winner, index) => (
+                <div key={index} className="bg-green-600 p-4 rounded-lg">
+                  <div className="font-semibold">{winner.participant}</div>
+                  <div>Ticket #{winner.ticketNumber} - {winner.prize}</div>
+                  <div className="text-sm text-green-200">{winner.time}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h2 className="text-2xl font-bold mb-4">👥 Participants (10 premiers)</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-700">
+                  <th className="text-left p-2">Nom</th>
+                  <th className="text-left p-2">Email</th>
+                  <th className="text-left p-2">Tickets</th>
+                </tr>
+              </thead>
+              <tbody>
+                {participants.slice(0, 10).map(participant => (
+                  <tr key={participant.id} className="border-b border-gray-700">
+                    <td className="p-2">{participant.name}</td>
+                    <td className="p-2">{participant.email}</td>
+                    <td className="p-2">{participant.tickets}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -66,4 +154,4 @@ const AdminLogin = () => {
   );
 };
 
-export default AdminLogin;
+export default AdminPanel;
