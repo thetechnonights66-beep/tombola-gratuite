@@ -3,35 +3,31 @@ import { TicketStorage } from '../utils/ticketStorage';
 
 const Confirmation = () => {
   const [tickets, setTickets] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Récupérer les tickets depuis l'URL ou le storage
-    const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
-    const ticketNumbers = urlParams.get('tickets');
-    
-    if (ticketNumbers) {
-      const numbers = ticketNumbers.split(',');
-      const allTickets = TicketStorage.getTickets();
-      const purchasedTickets = allTickets.filter(ticket => 
-        numbers.includes(ticket.number.toString())
-      );
-      setTickets(purchasedTickets);
-    }
-    
-    setLoading(false);
+    // Simuler l'achat de tickets pour le test
+    const testTickets = [
+      {
+        id: 1,
+        number: 1234,
+        purchaseDate: new Date().toISOString(),
+        price: 5,
+        participant: "Test User",
+        email: "test@email.com",
+        isDrawn: false
+      },
+      {
+        id: 2,
+        number: 5678,
+        purchaseDate: new Date().toISOString(),
+        price: 5,
+        participant: "Test User",
+        email: "test@email.com",
+        isDrawn: false
+      }
+    ];
+    setTickets(testTickets);
   }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-lg">Chargement de vos tickets...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-400 to-blue-500 py-8">
@@ -54,20 +50,11 @@ const Confirmation = () => {
               }`}>
                 {ticket.isDrawn ? '🎊 Déjà tiré' : '⏳ En attente'}
               </div>
-              {ticket.drawResult && (
-                <div className="text-xs text-gray-400 mt-1">
-                  Résultat: {ticket.drawResult}
-                </div>
-              )}
             </div>
           ))}
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-6 text-center">
-          <h3 className="text-xl font-semibold mb-4">📧 Email de confirmation envoyé</h3>
-          <p className="text-gray-600 mb-4">
-            Un récapitulatif de votre achat avec vos numéros de tickets a été envoyé à votre adresse email.
-          </p>
           <button 
             onClick={() => (window.location.hash = '#/')}
             className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 mr-4"
