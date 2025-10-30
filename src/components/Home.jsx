@@ -1,13 +1,43 @@
 import React from 'react';
 
 const Home = () => {
-  // ✅ DÉFINIR VOS LOTS ICI
+  // ✅ LOTS AVEC IMAGES, DESCRIPTIONS ET EMOJIS
   const prizes = [
-    { emoji: "🎮", name: "PlayStation 5", value: "500€" },
-    { emoji: "💻", name: "MacBook Air", value: "1200€" },
-    { emoji: "📱", name: "iPhone 15", value: "900€" },
-    { emoji: "🛫", name: "Weekend à Paris", value: "800€" },
-    { emoji: "🎁", name: "Cadeau surprise", value: "300€" }
+    { 
+      emoji: "🚗", 
+      name: "Voiture Tesla", 
+      value: "45,000€",
+      image: "https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=300&h=200&fit=crop",
+      description: "Tesla Model 3 neuve - Autonomie 500km"
+    },
+    { 
+      emoji: "✈️", 
+      name: "Voyage aux Maldives", 
+      value: "5,000€",
+      image: "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=300&h=200&fit=crop",
+      description: "7 nuits tout inclus dans un resort 5 étoiles"
+    },
+    { 
+      emoji: "💎", 
+      name: "Bague en diamant", 
+      value: "2,500€",
+      image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=300&h=200&fit=crop",
+      description: "Bague en or blanc avec diamant 1 carat"
+    },
+    { 
+      emoji: "🎸", 
+      name: "Guitare Fender", 
+      value: "800€",
+      image: "https://images.unsplash.com/photo-1558098329-a11cff621064?w=300&h=200&fit=crop",
+      description: "Fender Stratocaster - Édition limitée"
+    },
+    { 
+      emoji: "🛒", 
+      name: "Carte cadeau Amazon", 
+      value: "500€",
+      image: "https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?w=300&h=200&fit=crop",
+      description: "Carte cadeau utilisable sur tous les produits Amazon"
+    }
   ];
 
   return (
@@ -20,13 +50,33 @@ const Home = () => {
           Tentez votre chance pour gagner des lots exceptionnels !
         </p>
         
-        {/* ✅ SECTION DES LOTS MISE À JOUR */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto mb-12">
+        {/* ✅ SECTION DES LOTS AMÉLIORÉE */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12">
           {prizes.map((prize, index) => (
-            <div key={index} className="bg-white/20 p-6 rounded-lg backdrop-blur border border-white/30">
-              <div className="text-4xl mb-3">{prize.emoji}</div>
-              <h3 className="text-xl font-semibold mb-2">{prize.name}</h3>
-              <p className="text-yellow-300 font-bold">Valeur : {prize.value}</p>
+            <div key={index} className="bg-white/20 rounded-xl backdrop-blur border border-white/30 overflow-hidden hover:scale-105 transition duration-300">
+              {/* Image du lot */}
+              <div className="h-48 bg-gray-300 overflow-hidden">
+                <img 
+                  src={prize.image} 
+                  alt={prize.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              
+              {/* Contenu du lot */}
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="text-3xl">{prize.emoji}</div>
+                  <div className="text-yellow-300 font-bold text-lg">{prize.value}</div>
+                </div>
+                
+                <h3 className="text-xl font-semibold mb-2">{prize.name}</h3>
+                <p className="text-white/80 text-sm mb-4">{prize.description}</p>
+                
+                <div className="bg-white/10 rounded-lg p-3 text-center">
+                  <span className="text-sm">🎯 Lot {index + 1}</span>
+                </div>
+              </div>
             </div>
           ))}
         </div>
