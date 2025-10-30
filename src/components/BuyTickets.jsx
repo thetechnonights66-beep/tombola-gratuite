@@ -1,12 +1,39 @@
 import React, { useState } from 'react';
+import { TicketStorage } from '../utils/ticketStorage';
 
 const BuyTickets = () => {
   const [ticketCount, setTicketCount] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState('card');
+  const [participantInfo, setParticipantInfo] = useState({
+    name: '',
+    email: ''
+  });
+
+  const generateTicketNumber = () => {
+    return Math.floor(1000 + Math.random() * 9000); // Numéro à 4 chiffres
+  };
 
   const handlePurchase = () => {
-    alert(`Achat simulé de ${ticketCount} ticket(s) pour ${ticketCount * 5}€ !`);
-    window.location.hash = '#/';
+    if (!participantInfo.name || !participantInfo.email) {
+      alert('Veuillez remplir vos informations personnelles');
+      return;
+    }
+
+    // Générer les tickets
+    const tickets = [];
+    for (let i = 0; i < ticketCount; i++) {
+      const ticketNumber = generateTicketNumber();
+      const ticket = TicketStorage.addTicket({
+        number: ticketNumber,
+        price: 5,
+        participant: participantInfo.name,
+        email: participantInfo.email
+      });
+      tickets.push(ticket);
+    }
+
+    // Rediriger vers la page de confirmation
+    window.location.hash = `#/confirmation?tickets=${tickets.map(t => t.number).join(',')}`;
   };
 
   return (
@@ -14,6 +41,25 @@ const BuyTickets = () => {
       <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
         <h2 className="text-3xl font-bold text-center mb-6">Acheter des tickets</h2>
         
+        {/* Informations personnelles */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-3">👤 Vos informations</h3>
+          <input
+            type="text"
+            placeholder="Votre nom complet"
+            className="w-full p-3 border rounded-lg mb-2"
+            value={participantInfo.name}
+            onChange={(e) => setParticipantInfo({...participantInfo, name: e.target.value})}
+          />
+          <input
+            type="email"
+            placeholder="Votre email"
+            className="w-full p-3 border rounded-lg"
+            value={participantInfo.email}
+            onChange={(e) => setParticipantInfo({...participantInfo, email: e.target.value})}
+          />
+        </div>
+
         <div className="mb-6">
           <label className="block text-sm font-medium mb-2">Nombre de tickets</label>
           <div className="flex items-center gap-4">
