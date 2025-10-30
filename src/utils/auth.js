@@ -7,7 +7,7 @@ export const Auth = {
 
   // Connecter l'utilisateur
   login(password) {
-    // Mot de passe défini par vous - Changez-le !
+    // ✅ CHANGEZ CE MOT DE PASSE !
     const adminPassword = "tombola2024"; 
     if (password === adminPassword) {
       localStorage.setItem('adminAuthenticated', 'true');
@@ -21,12 +21,19 @@ export const Auth = {
     localStorage.removeItem('adminAuthenticated');
   },
 
-  // Protéger une route
+  // Protéger une route - Redirige vers login si non authentifié
   requireAuth() {
     if (!this.isAuthenticated()) {
       window.location.hash = '#/admin-login';
       return false;
     }
+    return true;
+  },
+
+  // Accès direct à l'admin (pour vous seulement)
+  directAccess() {
+    // Cette fonction permet d'accéder directement à l'admin
+    // en connaissant l'URL exacte
     return true;
   }
 };
