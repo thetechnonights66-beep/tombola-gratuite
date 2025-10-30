@@ -1,36 +1,14 @@
 import React, { useState } from 'react';
+import { TicketStorage } from '../utils/ticketStorage';
 
 const MyTickets = () => {
   const [tickets, setTickets] = useState([]);
   const [email, setEmail] = useState('');
 
   const searchTickets = () => {
-    // Données de test
-    const testTickets = [
-      {
-        id: 1,
-        number: 1234,
-        purchaseDate: new Date().toISOString(),
-        participant: "Jean Dupont",
-        email: "jean@email.com",
-        isDrawn: false
-      },
-      {
-        id: 2,
-        number: 5678,
-        purchaseDate: new Date().toISOString(),
-        participant: "Jean Dupont",
-        email: "jean@email.com", 
-        isDrawn: true,
-        drawResult: "Gagnant - Lot 1",
-        drawDate: new Date().toISOString()
-      }
-    ];
-    
-    if (email === "jean@email.com") {
-      setTickets(testTickets);
-    } else {
-      setTickets([]);
+    if (email) {
+      const participantTickets = TicketStorage.getParticipantTickets(email);
+      setTickets(participantTickets);
     }
   };
 
@@ -47,7 +25,7 @@ const MyTickets = () => {
             <div className="flex gap-2">
               <input
                 type="email"
-                placeholder="jean@email.com"
+                placeholder="votre@email.com"
                 className="flex-1 p-3 border rounded-lg"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -60,13 +38,16 @@ const MyTickets = () => {
                 Rechercher
               </button>
             </div>
-            <p className="text-sm text-gray-500 mt-2">
-              Testez avec : <strong>jean@email.com</strong>
-            </p>
           </div>
 
           {tickets.length > 0 && (
             <div>
+              <div className="mb-4 text-center">
+                <p className="text-lg font-semibold">
+                  {tickets.length} ticket(s) trouvé(s) pour <strong>{email}</strong>
+                </p>
+              </div>
+              
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                 {tickets.map(ticket => (
                   <div key={ticket.id} className={`border rounded-lg p-4 ${
@@ -78,6 +59,7 @@ const MyTickets = () => {
                       <div className="text-sm text-gray-600 mt-1">
                         Acheté le {new Date(ticket.purchaseDate).toLocaleDateString()}
                       </div>
+                      <div className="text-sm text-gray-500">Par {ticket.participant}</div>
                       <div className={`text-sm font-semibold mt-2 ${
                         ticket.isDrawn ? 'text-green-600' : 'text-blue-600'
                       }`}>
