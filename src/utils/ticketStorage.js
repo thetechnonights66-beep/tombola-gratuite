@@ -16,8 +16,8 @@ export const TicketStorage = {
       price: ticketData.price,
       participant: ticketData.participant || 'Anonyme',
       email: ticketData.email || '',
-      isDrawn: false, // Nouveau champ pour suivre si le ticket a été tiré
-      drawResult: null // Résultat du tirage
+      isDrawn: false,
+      drawResult: null
     };
     
     tickets.push(newTicket);
@@ -46,12 +46,5 @@ export const TicketStorage = {
   getParticipantTickets(email) {
     const tickets = this.getTickets();
     return tickets.filter(ticket => ticket.email === email);
-  },
-
-  // Vérifier si un numéro a déjà été tiré
-  isNumberDrawn(ticketNumber) {
-    const tickets = this.getTickets();
-    const ticket = tickets.find(t => t.number === ticketNumber);
-    return ticket ? ticket.isDrawn : false;
   }
 };
