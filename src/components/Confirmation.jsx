@@ -1,20 +1,25 @@
 import React, { useState, useEffect } from 'react';
+import { TicketStorage } from '../utils/ticketStorage';
 
 const Confirmation = () => {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const generatedTickets = Array.from({ length: 5 }, (_, i) => ({
-      id: i + 1,
-      number: Math.floor(Math.random() * 1000) + 1,
-      date: new Date().toLocaleDateString()
-    }));
+    // Récupérer les tickets depuis l'URL ou le storage
+    const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
+    const ticketNumbers = urlParams.get('tickets');
     
-    setTimeout(() => {
-      setTickets(generatedTickets);
-      setLoading(false);
-    }, 1500);
+    if (ticketNumbers) {
+      const numbers = ticketNumbers.split(',');
+      const allTickets = TicketStorage.getTickets();
+      const purchasedTickets = allTickets.filter(ticket => 
+        numbers.includes(ticket.number.toString())
+      );
+      setTickets(purchasedTickets);
+    }
+    
+    setLoading(false);
   }, []);
 
   if (loading) {
@@ -22,7 +27,7 @@ const Confirmation = () => {
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-lg">Génération de vos tickets...</p>
+          <p className="mt-4 text-lg">Chargement de vos tickets...</p>
         </div>
       </div>
     );
@@ -42,19 +47,38 @@ const Confirmation = () => {
           {tickets.map(ticket => (
             <div key={ticket.id} className="bg-white rounded-lg shadow-lg p-6 text-center transform hover:scale-105 transition">
               <div className="text-4xl mb-2">🎫</div>
-              <div className="text-2xl font-bold text-gray-800 mb-2">#{ticket.number.toString().padStart(3, '0')}</div>
-              <div className="text-sm text-gray-500">Ticket {ticket.id}</div>
-              <div className="text-xs text-gray-400 mt-2">{ticket.date}</div>
+              <div className="text-2xl font-bold text-gray-800 mb-2">#{ticket.number}</div>
+              <div className="text-sm text-gray-500 mb-1">Acheté le {new Date(ticket.purchaseDate).toLocaleDateString()}</div>
+              <div className={`text-sm font-semibold ${
+                ticket.isDrawn ? 'text-green-600' : 'text-blue-600'
+              }`}>
+                {ticket.isDrawn ? '🎊 Déjà tiré' : '⏳ En attente'}
+              </div>
+              {ticket.drawResult && (
+                <div className="text-xs text-gray-400 mt-1">
+                  Résultat: {ticket.drawResult}
+                </div>
+              )}
             </div>
           ))}
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-6 text-center">
+          <h3 className="text-xl font-semibold mb-4">📧 Email de confirmation envoyé</h3>
+          <p className="text-gray-600 mb-4">
+            Un récapitulatif de votre achat avec vos numéros de tickets a été envoyé à votre adresse email.
+          </p>
           <button 
-            onClick={() => window.location.href = '/'}
-            className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600"
+            onClick={() => (window.location.hash = '#/')}
+            className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 mr-4"
           >
             Retour à l'accueil
+          </button>
+          <button 
+            onClick={() => (window.location.hash = '#/my-tickets')}
+            className="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600"
+          >
+            Mes tickets
           </button>
         </div>
       </div>
