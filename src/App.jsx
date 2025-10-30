@@ -3,6 +3,8 @@ import { HashRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Home from './components/Home';
 import BuyTickets from './components/BuyTickets';
 import AdminPanel from './components/AdminPanel';
+import Confirmation from './components/Confirmation';
+import MyTickets from './components/MyTickets';
 
 function App() {
   return (
@@ -17,6 +19,7 @@ function App() {
               <div className="flex gap-4">
                 <Link to="/" className="text-gray-700 hover:text-purple-600">Accueil</Link>
                 <Link to="/buy" className="text-gray-700 hover:text-purple-600">Acheter</Link>
+                <Link to="/my-tickets" className="text-gray-700 hover:text-purple-600">Mes Tickets</Link>
                 <Link to="/admin" className="text-red-500 hover:text-red-600">Admin</Link>
               </div>
             </div>
@@ -27,6 +30,8 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/buy" element={<BuyTickets />} />
           <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/confirmation" element={<Confirmation />} />
+          <Route path="/my-tickets" element={<MyTickets />} />
         </Routes>
       </div>
     </Router>
