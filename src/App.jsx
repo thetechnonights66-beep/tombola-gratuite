@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './components/Home';
 import BuyTickets from './components/BuyTickets';
 import AdminPanel from './components/AdminPanel';
@@ -14,15 +14,15 @@ function App() {
         <nav className="bg-white shadow-lg">
           <div className="max-w-6xl mx-auto px-4">
             <div className="flex justify-between items-center py-4">
-              <Link to="/" className="text-2xl font-bold text-purple-600">
+              <a href="#/" className="text-2xl font-bold text-purple-600">
                 🎪 Tombola
-              </Link>
+              </a>
               <div className="flex gap-4">
-                {/* ✅ MENU PUBLIC SEULEMENT */}
-                <Link to="/" className="text-gray-700 hover:text-purple-600">Accueil</Link>
-                <Link to="/buy" className="text-gray-700 hover:text-purple-600">Acheter</Link>
-                <Link to="/my-tickets" className="text-gray-700 hover:text-purple-600">Mes Tickets</Link>
-                {/* ❌ SUPPRIMÉ : Lien Admin pour le public */}
+                {/* ✅ MENU PUBLIC SEULEMENT - PAS DE ADMIN */}
+                <a href="#/" className="text-gray-700 hover:text-purple-600">Accueil</a>
+                <a href="#/buy" className="text-gray-700 hover:text-purple-600">Acheter</a>
+                <a href="#/my-tickets" className="text-gray-700 hover:text-purple-600">Mes Tickets</a>
+                {/* ❌ SUPPRIMÉ : Aucun lien vers l'admin */}
               </div>
             </div>
           </div>
