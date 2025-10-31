@@ -11,6 +11,12 @@ const AdminPanel = () => {
     if (Auth.isAuthenticated()) {
       setIsAuthenticated(true);
       
+      // Charger les gagnants existants depuis le localStorage
+      const savedWinners = localStorage.getItem('tombolaWinners');
+      if (savedWinners) {
+        setWinners(JSON.parse(savedWinners));
+      }
+      
       // Données de test avec tickets
       const mockParticipants = Array.from({ length: 50 }, (_, i) => ({
         id: i + 1,
@@ -26,17 +32,29 @@ const AdminPanel = () => {
   }, []);
 
   const handleWinnerSelected = (winner) => {
-    setWinners(prev => [...prev, {
+    const newWinner = {
       participant: winner.name,
       ticketNumber: winner.ticketNumber,
       prize: `Lot ${winners.length + 1}`,
       time: new Date().toLocaleTimeString()
-    }]);
+    };
+    
+    const updatedWinners = [...winners, newWinner];
+    setWinners(updatedWinners);
+    
+    // ✅ SAUVEGARDER DANS LE LOCALSTORAGE POUR LA DIFFUSION EN DIRECT
+    localStorage.setItem('tombolaWinners', JSON.stringify(updatedWinners));
   };
 
   const handleLogout = () => {
     Auth.logout();
     window.location.hash = '#/';
+  };
+
+  // Fonction pour réinitialiser les gagnants
+  const resetWinners = () => {
+    setWinners([]);
+    localStorage.removeItem('tombolaWinners');
   };
 
   if (!isAuthenticated) {
@@ -55,12 +73,20 @@ const AdminPanel = () => {
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">🎮 Panel Admin Tombola</h1>
-          <button
-            onClick={handleLogout}
-            className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-semibold"
-          >
-            Déconnexion
-          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={resetWinners}
+              className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold"
+            >
+              🔄 Réinitialiser
+            </button>
+            <button
+              onClick={handleLogout}
+              className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-semibold"
+            >
+              Déconnexion
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -94,7 +120,12 @@ const AdminPanel = () => {
 
         {winners.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-6 mt-8">
-            <h2 className="text-2xl font-bold mb-4">🏆 Historique des Gagnants</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">🏆 Historique des Gagnants</h2>
+              <div className="text-sm text-gray-400">
+                {winners.length} gagnant(s) - Sauvegardé automatiquement
+              </div>
+            </div>
             <div className="space-y-3">
               {winners.map((winner, index) => (
                 <div key={index} className="bg-green-600 p-4 rounded-lg">
