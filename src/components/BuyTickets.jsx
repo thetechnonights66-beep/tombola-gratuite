@@ -14,6 +14,11 @@ const BuyTickets = () => {
   };
 
   const handlePurchase = () => {
+    // ✅ DÉBUT DU DEBUG
+    console.log('=== DÉBUGAGE ACHAT ===');
+    console.log('Participant:', participantInfo);
+    console.log('Nombre de tickets:', ticketCount);
+
     if (!participantInfo.name || !participantInfo.email) {
       alert('Veuillez remplir vos informations personnelles');
       return;
@@ -30,7 +35,21 @@ const BuyTickets = () => {
         email: participantInfo.email
       });
       tickets.push(ticket);
+      
+      // ✅ DEBUG DANS LA BOUCLE
+      console.log(`Ticket ${i+1} créé:`, ticket);
     }
+
+    // ✅ VERIFICATION FINALE
+    const allTickets = TicketStorage.getTickets();
+    console.log('Tous les tickets après achat:', allTickets);
+    
+    const allParticipants = TicketStorage.getAllParticipants();
+    console.log('Participants après achat:', allParticipants);
+    
+    console.log('Nombre total de tickets:', allTickets.length);
+    console.log('Nombre total de participants:', allParticipants.length);
+    console.log('========================');
 
     // Rediriger vers la page de confirmation
     window.location.hash = `#/confirmation?tickets=${tickets.map(t => t.number).join(',')}`;
