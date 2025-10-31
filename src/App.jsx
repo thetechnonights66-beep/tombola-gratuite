@@ -18,11 +18,11 @@ function App() {
                 🎪 Tombola
               </a>
               <div className="flex gap-4">
-                {/* ✅ MENU PUBLIC SEULEMENT - PAS DE ADMIN */}
+                {/* ✅ UNIQUEMENT 3 LIENS PUBLICS */}
                 <a href="#/" className="text-gray-700 hover:text-purple-600">Accueil</a>
                 <a href="#/buy" className="text-gray-700 hover:text-purple-600">Acheter</a>
                 <a href="#/my-tickets" className="text-gray-700 hover:text-purple-600">Mes Tickets</a>
-                {/* ❌ SUPPRIMÉ : Aucun lien vers l'admin */}
+                {/* ❌ AUCUN LIEN ADMIN ICI */}
               </div>
             </div>
           </div>
