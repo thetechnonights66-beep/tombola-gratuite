@@ -18,7 +18,6 @@ function App() {
                 🎪 Tombola
               </a>
               <div className="flex gap-4">
-                {/* ✅ MENU PUBLIC SANS ADMIN */}
                 <a href="#/" className="text-gray-700 hover:text-purple-600">Accueil</a>
                 <a href="#/buy" className="text-gray-700 hover:text-purple-600">Acheter</a>
                 <a href="#/my-tickets" className="text-gray-700 hover:text-purple-600">Mes Tickets</a>
@@ -28,13 +27,10 @@ function App() {
         </nav>
 
         <Routes>
-          {/* ✅ ROUTES PUBLIQUES */}
           <Route path="/" element={<Home />} />
           <Route path="/buy" element={<BuyTickets />} />
           <Route path="/confirmation" element={<Confirmation />} />
-          <Route path="/my-tickets" element={<MyTickets /> />
-          
-          {/* 🔒 ROUTES ADMIN CACHÉES (pas dans le menu) */}
+          <Route path="/my-tickets" element={<MyTickets />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/admin-login" element={<AdminLogin />} />
         </Routes>
