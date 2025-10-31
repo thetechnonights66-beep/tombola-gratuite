@@ -1,52 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { Auth } from '../utils/auth';
+import BallDrop from './BallDrop';
 
 const AdminPanel = () => {
   const [participants, setParticipants] = useState([]);
   const [winners, setWinners] = useState([]);
-  const [isDrawing, setIsDrawing] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Vérifier l'authentification au chargement
   useEffect(() => {
     if (Auth.isAuthenticated()) {
       setIsAuthenticated(true);
       
+      // Données de test avec tickets
       const mockParticipants = Array.from({ length: 50 }, (_, i) => ({
         id: i + 1,
         name: `Participant ${i + 1}`,
         email: `participant${i + 1}@email.com`,
         tickets: Math.floor(Math.random() * 5) + 1,
-        numbers: Array.from({ length: 5 }, () => Math.floor(Math.random() * 1000))
+        ticketNumber: Math.floor(1000 + Math.random() * 9000)
       }));
       setParticipants(mockParticipants);
     } else {
-      // Rediriger vers la page de login si non authentifié
       window.location.hash = '#/admin-login';
     }
   }, []);
 
-  const startDraw = () => {
-    if (!Auth.isAuthenticated()) {
-      window.location.hash = '#/admin-login';
-      return;
-    }
-
-    setIsDrawing(true);
-    
-    setTimeout(() => {
-      const winnerIndex = Math.floor(Math.random() * participants.length);
-      const winner = participants[winnerIndex];
-      const winningNumber = winner.numbers[Math.floor(Math.random() * winner.numbers.length)];
-      
-      setWinners([...winners, {
-        participant: winner.name,
-        ticketNumber: winningNumber,
-        prize: `Lot ${winners.length + 1}`,
-        time: new Date().toLocaleTimeString()
-      }]);
-      setIsDrawing(false);
-    }, 3000);
+  const handleWinnerSelected = (winner) => {
+    setWinners(prev => [...prev, {
+      participant: winner.name,
+      ticketNumber: winner.ticketNumber,
+      prize: `Lot ${winners.length + 1}`,
+      time: new Date().toLocaleTimeString()
+    }]);
   };
 
   const handleLogout = () => {
@@ -54,7 +39,6 @@ const AdminPanel = () => {
     window.location.hash = '#/';
   };
 
-  // Afficher un loading ou rediriger
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -69,7 +53,6 @@ const AdminPanel = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-6xl mx-auto">
-        {/* En-tête avec bouton de déconnexion */}
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">🎮 Panel Admin Tombola</h1>
           <button
@@ -103,32 +86,19 @@ const AdminPanel = () => {
           </div>
         </div>
 
-        <div className="text-center mb-8">
-          <button
-            onClick={startDraw}
-            disabled={isDrawing || participants.length === 0}
-            className={`px-8 py-4 rounded-full text-xl font-bold ${
-              isDrawing ? 'bg-gray-600' : 'bg-red-500 hover:bg-red-600'
-            }`}
-          >
-            {isDrawing ? '🎲 Tirage en cours...' : '🎯 Lancer le tirage'}
-          </button>
-        </div>
-
-        {isDrawing && (
-          <div className="text-center my-8">
-            <div className="text-6xl animate-bounce mb-4">🎰</div>
-            <p className="text-xl">Tirage au sort en cours...</p>
-          </div>
-        )}
+        {/* ANIMATION BILLES TOMBANTES */}
+        <BallDrop 
+          participants={participants} 
+          onWinnerSelected={handleWinnerSelected} 
+        />
 
         {winners.length > 0 && (
-          <div className="bg-gray-800 rounded-lg p-6 mb-8">
-            <h2 className="text-2xl font-bold mb-4">🏆 Gagnants</h2>
+          <div className="bg-gray-800 rounded-lg p-6 mt-8">
+            <h2 className="text-2xl font-bold mb-4">🏆 Historique des Gagnants</h2>
             <div className="space-y-3">
               {winners.map((winner, index) => (
                 <div key={index} className="bg-green-600 p-4 rounded-lg">
-                  <div className="font-semibold">{winner.participant}</div>
+                  <div className="font-semibold text-lg">{winner.participant}</div>
                   <div>Ticket #{winner.ticketNumber} - {winner.prize}</div>
                   <div className="text-sm text-green-200">{winner.time}</div>
                 </div>
@@ -137,8 +107,8 @@ const AdminPanel = () => {
           </div>
         )}
 
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h2 className="text-2xl font-bold mb-4">👥 Participants (10 premiers)</h2>
+        <div className="bg-gray-800 rounded-lg p-6 mt-8">
+          <h2 className="text-2xl font-bold mb-4">👥 Participants ({participants.length})</h2>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -146,6 +116,7 @@ const AdminPanel = () => {
                   <th className="text-left p-2">Nom</th>
                   <th className="text-left p-2">Email</th>
                   <th className="text-left p-2">Tickets</th>
+                  <th className="text-left p-2">Numéro</th>
                 </tr>
               </thead>
               <tbody>
@@ -154,6 +125,7 @@ const AdminPanel = () => {
                     <td className="p-2">{participant.name}</td>
                     <td className="p-2">{participant.email}</td>
                     <td className="p-2">{participant.tickets}</td>
+                    <td className="p-2 font-mono">#{participant.ticketNumber}</td>
                   </tr>
                 ))}
               </tbody>
