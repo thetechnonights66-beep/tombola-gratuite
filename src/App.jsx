@@ -6,6 +6,7 @@ import AdminPanel from './components/AdminPanel';
 import Confirmation from './components/Confirmation';
 import MyTickets from './components/MyTickets';
 import AdminLogin from './components/AdminLogin';
+import LiveDraw from './components/LiveDraw';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
                 <a href="#/" className="text-gray-700 hover:text-purple-600">Accueil</a>
                 <a href="#/buy" className="text-gray-700 hover:text-purple-600">Acheter</a>
                 <a href="#/my-tickets" className="text-gray-700 hover:text-purple-600">Mes Tickets</a>
+                <a href="#/live" className="text-green-600 hover:text-green-700 font-bold">📺 En Direct</a>
               </div>
             </div>
           </div>
@@ -33,6 +35,7 @@ function App() {
           <Route path="/my-tickets" element={<MyTickets />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/live" element={<LiveDraw />} />
         </Routes>
       </div>
     </Router>
