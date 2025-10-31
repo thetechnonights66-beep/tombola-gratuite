@@ -1,7 +1,7 @@
 import React from 'react';
+import Countdown from './Countdown';
 
 const Home = () => {
-  // ✅ LOTS AVEC IMAGES, DESCRIPTIONS ET EMOJIS
   const prizes = [
     { 
       emoji: "🚗", 
@@ -23,38 +23,28 @@ const Home = () => {
       value: "2,500€",
       image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=300&h=200&fit=crop",
       description: "Bague en or blanc avec diamant 1 carat"
-    },
-    { 
-      emoji: "🎸", 
-      name: "Guitare Fender", 
-      value: "800€",
-      image: "https://images.unsplash.com/photo-1558098329-a11cff621064?w=300&h=200&fit=crop",
-      description: "Fender Stratocaster - Édition limitée"
-    },
-    { 
-      emoji: "🛒", 
-      name: "Carte cadeau Amazon", 
-      value: "500€",
-      image: "https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?w=300&h=200&fit=crop",
-      description: "Carte cadeau utilisable sur tous les produits Amazon"
     }
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-500 text-white">
-      <div className="container mx-auto px-4 py-16">
-        <h1 className="text-5xl font-bold text-center mb-8">
-          🎪 Tombola Excursion
-        </h1>
-        <p className="text-xl text-center mb-12">
-          Tentez votre chance pour gagner des lots exceptionnels !
-        </p>
+      <div className="container mx-auto px-4 py-8">
         
-        {/* ✅ SECTION DES LOTS AMÉLIORÉE */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12">
+        {/* ✅ COMPTE À REBOURS AJOUTÉ ICI */}
+        <Countdown />
+
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold mb-4">
+            🎪 Tombola Excursion
+          </h1>
+          <p className="text-xl">
+            Tentez votre chance pour gagner des lots exceptionnels !
+          </p>
+        </div>
+        
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12">
           {prizes.map((prize, index) => (
             <div key={index} className="bg-white/20 rounded-xl backdrop-blur border border-white/30 overflow-hidden hover:scale-105 transition duration-300">
-              {/* Image du lot */}
               <div className="h-48 bg-gray-300 overflow-hidden">
                 <img 
                   src={prize.image} 
@@ -63,7 +53,6 @@ const Home = () => {
                 />
               </div>
               
-              {/* Contenu du lot */}
               <div className="p-6">
                 <div className="flex items-start justify-between mb-3">
                   <div className="text-3xl">{prize.emoji}</div>
@@ -94,14 +83,14 @@ const Home = () => {
           
           <div className="bg-white/20 p-6 rounded-lg backdrop-blur">
             <h3 className="text-2xl font-semibold mb-4">🏆 {prizes.length} Lots à gagner</h3>
-            <p>Tirage le 25 décembre</p>
+            <p>Tentez votre chance dès maintenant</p>
           </div>
         </div>
         
-        <div className="text-center mt-8">
+        <div className="text-center">
           <button 
             onClick={() => (window.location.hash = '#/buy')}
-            className="bg-yellow-500 text-purple-900 px-8 py-4 rounded-full text-xl font-bold hover:bg-yellow-400 transition"
+            className="bg-yellow-500 text-purple-900 px-8 py-4 rounded-full text-xl font-bold hover:bg-yellow-400 transition transform hover:scale-105"
           >
             Acheter mes tickets 🎫
           </button>
