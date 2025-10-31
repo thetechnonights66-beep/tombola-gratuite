@@ -9,7 +9,6 @@ const AdminLogin = () => {
     e.preventDefault();
     
     if (Auth.login(password)) {
-      // ✅ Redirection vers le panel admin après connexion
       window.location.hash = '#/admin';
     } else {
       setError('Mot de passe incorrect');
