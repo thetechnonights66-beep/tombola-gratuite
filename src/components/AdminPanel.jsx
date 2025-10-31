@@ -1,35 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import { Auth } from '../utils/auth';
 import BallDrop from './BallDrop';
+import { TicketStorage } from '../utils/ticketStorage';
 
 const AdminPanel = () => {
   const [participants, setParticipants] = useState([]);
   const [winners, setWinners] = useState([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [liveStats, setLiveStats] = useState(null);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
 
   useEffect(() => {
     if (Auth.isAuthenticated()) {
       setIsAuthenticated(true);
-      
-      // Charger les gagnants existants depuis le localStorage
-      const savedWinners = localStorage.getItem('tombolaWinners');
-      if (savedWinners) {
-        setWinners(JSON.parse(savedWinners));
-      }
-      
-      // Données de test avec tickets
-      const mockParticipants = Array.from({ length: 50 }, (_, i) => ({
-        id: i + 1,
-        name: `Participant ${i + 1}`,
-        email: `participant${i + 1}@email.com`,
-        tickets: Math.floor(Math.random() * 5) + 1,
-        ticketNumber: Math.floor(1000 + Math.random() * 9000)
-      }));
-      setParticipants(mockParticipants);
+      loadRealData();
     } else {
       window.location.hash = '#/admin-login';
     }
   }, []);
+
+  // ✅ CORRECTION : Charger les données réelles
+  const loadRealData = () => {
+    console.log('🔄 Chargement des données réelles...');
+    const realParticipants = TicketStorage.getAllParticipants();
+    const stats = TicketStorage.getLiveStats();
+    
+    console.log('Participants réels:', realParticipants);
+    console.log('Statistiques:', stats);
+    
+    setParticipants(realParticipants);
+    setLiveStats(stats);
+    setLastUpdate(new Date());
+  };
+
+  // ✅ CORRECTION : Surveillance en temps réel améliorée
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Surveiller les changements dans le localStorage
+    const handleStorageChange = () => {
+      console.log('📦 Changement détecté dans le stockage');
+      loadRealData();
+    };
+
+    // Écouter les changements de stockage
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Vérifier toutes les 3 secondes
+    const interval = setInterval(() => {
+      loadRealData();
+    }, 3000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [isAuthenticated]);
 
   const handleWinnerSelected = (winner) => {
     const newWinner = {
@@ -41,8 +67,6 @@ const AdminPanel = () => {
     
     const updatedWinners = [...winners, newWinner];
     setWinners(updatedWinners);
-    
-    // ✅ SAUVEGARDER DANS LE LOCALSTORAGE POUR LA DIFFUSION EN DIRECT
     localStorage.setItem('tombolaWinners', JSON.stringify(updatedWinners));
   };
 
@@ -51,10 +75,10 @@ const AdminPanel = () => {
     window.location.hash = '#/';
   };
 
-  // Fonction pour réinitialiser les gagnants
-  const resetWinners = () => {
-    setWinners([]);
-    localStorage.removeItem('tombolaWinners');
+  // Fonction pour forcer la mise à jour
+  const forceRefresh = () => {
+    console.log('🔄 Forcer la mise à jour manuelle');
+    loadRealData();
   };
 
   if (!isAuthenticated) {
@@ -71,14 +95,21 @@ const AdminPanel = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-6xl mx-auto">
+        {/* En-tête avec indicateur temps réel */}
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">🎮 Panel Admin Tombola</h1>
+          <div>
+            <h1 className="text-4xl font-bold">🎮 Panel Admin Tombola</h1>
+            <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span>En direct • Dernière mise à jour : {lastUpdate.toLocaleTimeString()}</span>
+            </div>
+          </div>
           <div className="flex gap-4">
             <button
-              onClick={resetWinners}
-              className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold"
+              onClick={forceRefresh}
+              className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold"
             >
-              🔄 Réinitialiser
+              🔄 Actualiser
             </button>
             <button
               onClick={handleLogout}
@@ -89,16 +120,25 @@ const AdminPanel = () => {
           </div>
         </div>
 
+        {/* STATISTIQUES EN TEMPS RÉEL */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-blue-600 p-4 rounded-lg">
-            <div className="text-2xl font-bold">{participants.length}</div>
-            <div>Participants</div>
+            <div className="text-2xl font-bold">
+              {liveStats ? liveStats.totalParticipants : participants.length}
+            </div>
+            <div>Participants Réels</div>
+            <div className="text-xs text-blue-200 mt-1">
+              {participants.length} détectés
+            </div>
           </div>
           <div className="bg-green-600 p-4 rounded-lg">
             <div className="text-2xl font-bold">
-              {participants.reduce((sum, p) => sum + p.tickets, 0)}
+              {liveStats ? liveStats.totalTickets : '...'}
             </div>
-            <div>Tickets vendus</div>
+            <div>Tickets Vendus</div>
+            <div className="text-xs text-green-200 mt-1">
+              +{liveStats?.recentTickets || 0} aujourd'hui
+            </div>
           </div>
           <div className="bg-purple-600 p-4 rounded-lg">
             <div className="text-2xl font-bold">{winners.length}</div>
@@ -106,9 +146,9 @@ const AdminPanel = () => {
           </div>
           <div className="bg-yellow-600 p-4 rounded-lg">
             <div className="text-2xl font-bold">
-              {participants.reduce((sum, p) => sum + p.tickets * 5, 0)}€
+              {liveStats ? `€${liveStats.totalRevenue}` : '...'}
             </div>
-            <div>Recettes totales</div>
+            <div>Recettes Réelles</div>
           </div>
         </div>
 
@@ -118,50 +158,74 @@ const AdminPanel = () => {
           onWinnerSelected={handleWinnerSelected} 
         />
 
-        {winners.length > 0 && (
-          <div className="bg-gray-800 rounded-lg p-6 mt-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">🏆 Historique des Gagnants</h2>
-              <div className="text-sm text-gray-400">
-                {winners.length} gagnant(s) - Sauvegardé automatiquement
-              </div>
-            </div>
-            <div className="space-y-3">
-              {winners.map((winner, index) => (
-                <div key={index} className="bg-green-600 p-4 rounded-lg">
-                  <div className="font-semibold text-lg">{winner.participant}</div>
-                  <div>Ticket #{winner.ticketNumber} - {winner.prize}</div>
-                  <div className="text-sm text-green-200">{winner.time}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
+        {/* LISTE DES PARTICIPANTS RÉELS */}
         <div className="bg-gray-800 rounded-lg p-6 mt-8">
-          <h2 className="text-2xl font-bold mb-4">👥 Participants ({participants.length})</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left p-2">Nom</th>
-                  <th className="text-left p-2">Email</th>
-                  <th className="text-left p-2">Tickets</th>
-                  <th className="text-left p-2">Numéro</th>
-                </tr>
-              </thead>
-              <tbody>
-                {participants.slice(0, 10).map(participant => (
-                  <tr key={participant.id} className="border-b border-gray-700">
-                    <td className="p-2">{participant.name}</td>
-                    <td className="p-2">{participant.email}</td>
-                    <td className="p-2">{participant.tickets}</td>
-                    <td className="p-2 font-mono">#{participant.ticketNumber}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">
+              👥 Participants Réels ({participants.length})
+            </h2>
+            <div className="text-sm text-gray-400">
+              Dernier : {lastUpdate.toLocaleTimeString()}
+            </div>
           </div>
+          
+          {participants.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-700">
+                    <th className="text-left p-2">Nom</th>
+                    <th className="text-left p-2">Email</th>
+                    <th className="text-left p-2">Tickets</th>
+                    <th className="text-left p-2">Dépense</th>
+                    <th className="text-left p-2">Premier achat</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {participants.map((participant, index) => (
+                    <tr key={participant.id || index} className="border-b border-gray-700 hover:bg-gray-700">
+                      <td className="p-2 font-semibold">{participant.name}</td>
+                      <td className="p-2">{participant.email}</td>
+                      <td className="p-2">
+                        <span className="bg-blue-500 text-white px-2 py-1 rounded text-sm">
+                          {participant.tickets}
+                        </span>
+                      </td>
+                      <td className="p-2">
+                        <span className="bg-green-500 text-white px-2 py-1 rounded text-sm">
+                          €{participant.totalSpent}
+                        </span>
+                      </td>
+                      <td className="p-2 text-sm text-gray-400">
+                        {new Date(participant.firstPurchase).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-400">
+              <div className="text-4xl mb-4">📝</div>
+              <p>Aucun participant détecté</p>
+              <p className="text-sm mt-2">Vérifiez la console pour le debug</p>
+            </div>
+          )}
+        </div>
+
+        {/* BOUTON DEBUG */}
+        <div className="mt-4 text-center">
+          <button
+            onClick={() => {
+              console.log('=== DEBUG ADMINPANEL ===');
+              console.log('Participants:', participants);
+              console.log('LiveStats:', liveStats);
+              TicketStorage.debugTickets();
+            }}
+            className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg text-sm"
+          >
+            🐛 Debug Console
+          </button>
         </div>
       </div>
     </div>
