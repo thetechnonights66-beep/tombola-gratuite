@@ -87,12 +87,21 @@ const Home = () => {
           </div>
         </div>
         
-        <div className="text-center">
+        {/* ✅ BOUTONS AJOUTÉS ICI */}
+        <div className="text-center space-y-4 md:space-y-0 md:space-x-6">
           <button 
             onClick={() => (window.location.hash = '#/buy')}
-            className="bg-yellow-500 text-purple-900 px-8 py-4 rounded-full text-xl font-bold hover:bg-yellow-400 transition transform hover:scale-105"
+            className="bg-yellow-500 text-purple-900 px-8 py-4 rounded-full text-xl font-bold hover:bg-yellow-400 transition transform hover:scale-105 shadow-lg"
           >
             Acheter mes tickets 🎫
+          </button>
+          
+          {/* NOUVEAU BOUTON EN DIRECT */}
+          <button 
+            onClick={() => (window.location.hash = '#/live')}
+            className="bg-green-500 text-white px-8 py-4 rounded-full text-xl font-bold hover:bg-green-600 transition transform hover:scale-105 shadow-lg border-2 border-green-300"
+          >
+            📺 Voir le tirage en direct
           </button>
         </div>
       </div>
