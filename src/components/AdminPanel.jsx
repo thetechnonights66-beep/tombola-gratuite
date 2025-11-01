@@ -9,6 +9,7 @@ const AdminPanel = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [liveStats, setLiveStats] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [resetBallDrop, setResetBallDrop] = useState(0);
 
   useEffect(() => {
     if (Auth.isAuthenticated()) {
@@ -78,7 +79,7 @@ const AdminPanel = () => {
 
   // ✅ FONCTION RÉINITIALISATION DU TIRAGE
   const resetDraw = () => {
-    if (window.confirm('🔄 Réinitialiser le tirage ?\n\n• Tous les gagnants seront effacés\n• Les tickets seront remis en jeu\n• Action irréversible')) {
+    if (window.confirm('🔄 Réinitialiser le tirage ?\n\n• Tous les gagnants seront effacés\n• Les tickets seront remis en jeu\n• L\'animation sera réinitialisée\n• Action irréversible')) {
       
       // Réinitialisation des gagnants
       setWinners([]);
@@ -94,24 +95,72 @@ const AdminPanel = () => {
       }));
       localStorage.setItem('tombolaTickets', JSON.stringify(updatedTickets));
       
-      // Toast de confirmation
-      const toast = document.createElement('div');
-      toast.className = 'fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce';
-      toast.innerHTML = `
-        <div class="flex items-center gap-3">
-          <span class="text-xl">✅</span>
-          <div>
-            <div class="font-semibold">Tirage réinitialisé</div>
-            <div class="text-sm opacity-90">Prêt pour un nouveau tirage !</div>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(toast);
+      // ✅ RÉINITIALISATION DE L'ANIMATION BALLDROP
+      setResetBallDrop(prev => prev + 1);
+      console.log('🎯 Animation BallDrop réinitialisée');
       
-      setTimeout(() => {
-        toast.remove();
-      }, 4000);
+      // Toast de confirmation
+      showToast('✅ Tirage réinitialisé', 'Animation remise à zéro');
     }
+  };
+
+  // ✅ NOUVELLE FONCTION : RÉINITIALISER LES PARTICIPANTS
+  const resetParticipants = () => {
+    if (window.confirm('⚠️ RÉINITIALISER TOUS LES PARTICIPANTS ?\n\n🚨 ACTION TRÈS DANGEREUSE :\n• Tous les tickets seront SUPPRIMÉS\n• Tous les participants seront EFFACÉS\n• Toutes les données de vente seront PERDUES\n• Action DEFINITIVE et IRREVERSIBLE')) {
+      
+      // Double confirmation pour sécurité
+      if (window.confirm('❌ DERNIER AVERTISSEMENT :\n\nÊtes-vous ABSOLUMENT SÛR de vouloir supprimer TOUTES les données ?\n\n' + 
+                         `Cela supprimera :\n• ${participants.length} participant(s)\n• ${liveStats?.totalTickets || 0} ticket(s)\n• €${liveStats?.totalRevenue || 0} de recettes`)) {
+        
+        // Supprimer tous les tickets
+        TicketStorage.clearAllTickets();
+        
+        // Réinitialiser tous les états
+        setParticipants([]);
+        setWinners([]);
+        setLiveStats(null);
+        
+        // Supprimer aussi les gagnants
+        localStorage.removeItem('tombolaWinners');
+        
+        // Réinitialiser l'animation
+        setResetBallDrop(prev => prev + 1);
+        
+        console.log('🗑️ Tous les participants ont été supprimés');
+        showToast('🗑️ Participants réinitialisés', 'Toutes les données ont été supprimées', 'red');
+      }
+    }
+  };
+
+  // ✅ FONCTION POUR GÉNÉRER DES PARTICIPANTS DE TEST
+  const generateTestParticipants = () => {
+    const count = parseInt(prompt('Combien de participants de test générer ?', '10')) || 10;
+    
+    if (count > 0) {
+      TicketStorage.generateTestTickets(count);
+      loadRealData();
+      showToast('🧪 Participants test générés', `${count} nouveaux participants ajoutés`);
+    }
+  };
+
+  // ✅ FONCTION UTILITAIRE POUR LES TOASTS
+  const showToast = (title, message, color = 'green') => {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 bg-${color}-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce`;
+    toast.innerHTML = `
+      <div class="flex items-center gap-3">
+        <span class="text-xl">${title.includes('✅') ? '✅' : title.includes('🗑️') ? '🗑️' : title.includes('🧪') ? '🧪' : '⚠️'}</span>
+        <div>
+          <div class="font-semibold">${title}</div>
+          <div class="text-sm opacity-90">${message}</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.remove();
+    }, 4000);
   };
 
   const handleLogout = () => {
@@ -163,8 +212,21 @@ const AdminPanel = () => {
               🎯 Réinit. Tirage
             </button>
             <button
+              onClick={generateTestParticipants}
+              className="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded-lg font-semibold"
+            >
+              🧪 Générer Test
+            </button>
+            <button
+              onClick={resetParticipants}
+              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold"
+              disabled={participants.length === 0}
+            >
+              🗑️ Réinit. Participants
+            </button>
+            <button
               onClick={handleLogout}
-              className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-semibold"
+              className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg font-semibold"
             >
               Déconnexion
             </button>
@@ -203,10 +265,11 @@ const AdminPanel = () => {
           </div>
         </div>
 
-        {/* ANIMATION BILLES TOMBANTES */}
+        {/* ANIMATION BILLES TOMBANTES AVEC RÉINITIALISATION */}
         <BallDrop 
           participants={participants} 
-          onWinnerSelected={handleWinnerSelected} 
+          onWinnerSelected={handleWinnerSelected}
+          resetTrigger={resetBallDrop}
         />
 
         {/* SECTION GAGNANTS AVEC BOUTON RÉINITIALISATION */}
@@ -244,8 +307,17 @@ const AdminPanel = () => {
             <h2 className="text-2xl font-bold">
               👥 Participants Réels ({participants.length})
             </h2>
-            <div className="text-sm text-gray-400">
-              Dernier : {lastUpdate.toLocaleTimeString()}
+            <div className="flex gap-4 items-center">
+              <div className="text-sm text-gray-400">
+                Dernier : {lastUpdate.toLocaleTimeString()}
+              </div>
+              <button
+                onClick={resetParticipants}
+                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold text-sm"
+                disabled={participants.length === 0}
+              >
+                🗑️ Tout Supprimer
+              </button>
             </div>
           </div>
           
@@ -288,7 +360,9 @@ const AdminPanel = () => {
             <div className="text-center py-8 text-gray-400">
               <div className="text-4xl mb-4">📝</div>
               <p>Aucun participant détecté</p>
-              <p className="text-sm mt-2">Vérifiez la console pour le debug</p>
+              <p className="text-sm mt-2">
+                Utilisez "Générer Test" pour créer des données de démonstration
+              </p>
             </div>
           )}
         </div>
@@ -301,6 +375,7 @@ const AdminPanel = () => {
               console.log('Participants:', participants);
               console.log('LiveStats:', liveStats);
               console.log('Gagnants:', winners);
+              console.log('ResetBallDrop counter:', resetBallDrop);
               TicketStorage.debugTickets();
             }}
             className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg text-sm"
