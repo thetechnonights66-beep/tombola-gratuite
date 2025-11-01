@@ -14,12 +14,18 @@ const AdminPanel = () => {
     if (Auth.isAuthenticated()) {
       setIsAuthenticated(true);
       loadRealData();
+      
+      // Charger les gagnants existants
+      const savedWinners = localStorage.getItem('tombolaWinners');
+      if (savedWinners) {
+        setWinners(JSON.parse(savedWinners));
+      }
     } else {
       window.location.hash = '#/admin-login';
     }
   }, []);
 
-  // ✅ CORRECTION : Charger les données réelles
+  // ✅ Charger les données réelles
   const loadRealData = () => {
     console.log('🔄 Chargement des données réelles...');
     const realParticipants = TicketStorage.getAllParticipants();
@@ -33,7 +39,7 @@ const AdminPanel = () => {
     setLastUpdate(new Date());
   };
 
-  // ✅ CORRECTION : Surveillance en temps réel améliorée
+  // ✅ Surveillance en temps réel améliorée
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -68,6 +74,44 @@ const AdminPanel = () => {
     const updatedWinners = [...winners, newWinner];
     setWinners(updatedWinners);
     localStorage.setItem('tombolaWinners', JSON.stringify(updatedWinners));
+  };
+
+  // ✅ FONCTION RÉINITIALISATION DU TIRAGE
+  const resetDraw = () => {
+    if (window.confirm('🔄 Réinitialiser le tirage ?\n\n• Tous les gagnants seront effacés\n• Les tickets seront remis en jeu\n• Action irréversible')) {
+      
+      // Réinitialisation des gagnants
+      setWinners([]);
+      localStorage.removeItem('tombolaWinners');
+      
+      // Réinitialisation du statut des tickets
+      const tickets = TicketStorage.getTickets();
+      const updatedTickets = tickets.map(ticket => ({
+        ...ticket,
+        isDrawn: false,
+        drawResult: null,
+        drawDate: null
+      }));
+      localStorage.setItem('tombolaTickets', JSON.stringify(updatedTickets));
+      
+      // Toast de confirmation
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce';
+      toast.innerHTML = `
+        <div class="flex items-center gap-3">
+          <span class="text-xl">✅</span>
+          <div>
+            <div class="font-semibold">Tirage réinitialisé</div>
+            <div class="text-sm opacity-90">Prêt pour un nouveau tirage !</div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 4000);
+    }
   };
 
   const handleLogout = () => {
@@ -110,6 +154,13 @@ const AdminPanel = () => {
               className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold"
             >
               🔄 Actualiser
+            </button>
+            <button
+              onClick={resetDraw}
+              className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold"
+              disabled={winners.length === 0}
+            >
+              🎯 Réinit. Tirage
             </button>
             <button
               onClick={handleLogout}
@@ -157,6 +208,35 @@ const AdminPanel = () => {
           participants={participants} 
           onWinnerSelected={handleWinnerSelected} 
         />
+
+        {/* SECTION GAGNANTS AVEC BOUTON RÉINITIALISATION */}
+        {winners.length > 0 && (
+          <div className="bg-gray-800 rounded-lg p-6 mt-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">🏆 Historique des Gagnants</h2>
+              <div className="flex gap-4 items-center">
+                <div className="text-sm text-gray-400">
+                  {winners.length} gagnant(s)
+                </div>
+                <button
+                  onClick={resetDraw}
+                  className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-semibold text-sm"
+                >
+                  🔄 Réinitialiser Tirage
+                </button>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {winners.map((winner, index) => (
+                <div key={index} className="bg-green-600 p-4 rounded-lg">
+                  <div className="font-semibold text-lg">{winner.participant}</div>
+                  <div>Ticket #{winner.ticketNumber} - {winner.prize}</div>
+                  <div className="text-sm text-green-200">{winner.time}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* LISTE DES PARTICIPANTS RÉELS */}
         <div className="bg-gray-800 rounded-lg p-6 mt-8">
@@ -220,6 +300,7 @@ const AdminPanel = () => {
               console.log('=== DEBUG ADMINPANEL ===');
               console.log('Participants:', participants);
               console.log('LiveStats:', liveStats);
+              console.log('Gagnants:', winners);
               TicketStorage.debugTickets();
             }}
             className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg text-sm"
