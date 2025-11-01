@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Auth } from '../utils/auth';
 import BallDrop from './BallDrop';
 import { TicketStorage } from '../utils/ticketStorage';
+import { ParticipantHistory } from '../utils/participantHistory'; // ✅ NOUVEAU IMPORT
 
 const AdminPanel = () => {
   const [participants, setParticipants] = useState([]);
@@ -10,6 +11,8 @@ const AdminPanel = () => {
   const [liveStats, setLiveStats] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [resetBallDrop, setResetBallDrop] = useState(0);
+  const [snapshots, setSnapshots] = useState([]); // ✅ NOUVEAU STATE
+  const [showHistory, setShowHistory] = useState(false); // ✅ NOUVEAU STATE
 
   useEffect(() => {
     if (Auth.isAuthenticated()) {
@@ -21,6 +24,9 @@ const AdminPanel = () => {
       if (savedWinners) {
         setWinners(JSON.parse(savedWinners));
       }
+
+      // ✅ CHARGER L'HISTORIQUE DES SNAPSHOTS
+      setSnapshots(ParticipantHistory.getSnapshots());
     } else {
       window.location.hash = '#/admin-login';
     }
@@ -32,36 +38,20 @@ const AdminPanel = () => {
     const realParticipants = TicketStorage.getAllParticipants();
     const stats = TicketStorage.getLiveStats();
     
-    console.log('Participants réels:', realParticipants);
-    console.log('Statistiques:', stats);
-    
     setParticipants(realParticipants);
     setLiveStats(stats);
     setLastUpdate(new Date());
   };
 
-  // ✅ Surveillance en temps réel améliorée
+  // ✅ Surveillance en temps réel
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // Surveiller les changements dans le localStorage
-    const handleStorageChange = () => {
-      console.log('📦 Changement détecté dans le stockage');
-      loadRealData();
-    };
-
-    // Écouter les changements de stockage
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Vérifier toutes les 3 secondes
     const interval = setInterval(() => {
       loadRealData();
     }, 3000);
 
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [isAuthenticated]);
 
   const handleWinnerSelected = (winner) => {
@@ -77,9 +67,16 @@ const AdminPanel = () => {
     localStorage.setItem('tombolaWinners', JSON.stringify(updatedWinners));
   };
 
-  // ✅ FONCTION RÉINITIALISATION DU TIRAGE
+  // ✅ FONCTION RÉINITIALISATION AVEC SAUVEGARDE
   const resetDraw = () => {
-    if (window.confirm('🔄 Réinitialiser le tirage ?\n\n• Tous les gagnants seront effacés\n• Les tickets seront remis en jeu\n• L\'animation sera réinitialisée\n• Action irréversible')) {
+    if (window.confirm('🔄 Réinitialiser le tirage ?\n\n• Tous les gagnants seront effacés\n• Les tickets seront remis en jeu\n• L\'animation sera réinitialisée\n• Une sauvegarde sera créée')) {
+      
+      // ✅ SAUVEGARDER AVANT RÉINITIALISATION
+      const snapshotId = ParticipantHistory.saveParticipantsSnapshot(
+        participants, 
+        winners, 
+        'reset_tirage'
+      );
       
       // Réinitialisation des gagnants
       setWinners([]);
@@ -95,22 +92,29 @@ const AdminPanel = () => {
       }));
       localStorage.setItem('tombolaTickets', JSON.stringify(updatedTickets));
       
-      // ✅ RÉINITIALISATION DE L'ANIMATION BALLDROP
+      // ✅ RÉINITIALISATION DE L'ANIMATION
       setResetBallDrop(prev => prev + 1);
-      console.log('🎯 Animation BallDrop réinitialisée');
       
-      // Toast de confirmation
-      showToast('✅ Tirage réinitialisé', 'Animation remise à zéro');
+      // ✅ METTRE À JOUR L'HISTORIQUE
+      setSnapshots(ParticipantHistory.getSnapshots());
+      
+      showToast('✅ Tirage réinitialisé', `Sauvegarde #${snapshotId.split('_')[1]} créée`);
     }
   };
 
-  // ✅ NOUVELLE FONCTION : RÉINITIALISER LES PARTICIPANTS
+  // ✅ FONCTION RÉINITIALISATION PARTICIPANTS AVEC SAUVEGARDE
   const resetParticipants = () => {
-    if (window.confirm('⚠️ RÉINITIALISER TOUS LES PARTICIPANTS ?\n\n🚨 ACTION TRÈS DANGEREUSE :\n• Tous les tickets seront SUPPRIMÉS\n• Tous les participants seront EFFACÉS\n• Toutes les données de vente seront PERDUES\n• Action DEFINITIVE et IRREVERSIBLE')) {
+    if (window.confirm('⚠️ RÉINITIALISER TOUS LES PARTICIPANTS ?\n\nUne sauvegarde complète sera créée avant la suppression.')) {
       
-      // Double confirmation pour sécurité
-      if (window.confirm('❌ DERNIER AVERTISSEMENT :\n\nÊtes-vous ABSOLUMENT SÛR de vouloir supprimer TOUTES les données ?\n\n' + 
-                         `Cela supprimera :\n• ${participants.length} participant(s)\n• ${liveStats?.totalTickets || 0} ticket(s)\n• €${liveStats?.totalRevenue || 0} de recettes`)) {
+      // Double confirmation
+      if (window.confirm(`❌ CONFIRMER LA SUPPRESSION :\n\n• ${participants.length} participant(s)\n• ${liveStats?.totalTickets || 0} ticket(s)\n• €${liveStats?.totalRevenue || 0} de recettes\n\nUne sauvegarde sera disponible dans l'historique.`)) {
+        
+        // ✅ SAUVEGARDE COMPLÈTE AVANT SUPPRESSION
+        const snapshotId = ParticipantHistory.saveParticipantsSnapshot(
+          participants, 
+          winners, 
+          'reset_complet'
+        );
         
         // Supprimer tous les tickets
         TicketStorage.clearAllTickets();
@@ -126,9 +130,61 @@ const AdminPanel = () => {
         // Réinitialiser l'animation
         setResetBallDrop(prev => prev + 1);
         
-        console.log('🗑️ Tous les participants ont été supprimés');
-        showToast('🗑️ Participants réinitialisés', 'Toutes les données ont été supprimées', 'red');
+        // ✅ METTRE À JOUR L'HISTORIQUE
+        setSnapshots(ParticipantHistory.getSnapshots());
+        
+        showToast('🗑️ Participants réinitialisés', `Sauvegarde #${snapshotId.split('_')[1]} créée`, 'orange');
       }
+    }
+  };
+
+  // ✅ FONCTION POUR RESTAURER UN SNAPSHOT
+  const restoreSnapshot = (snapshotId) => {
+    const snapshot = ParticipantHistory.getSnapshot(snapshotId);
+    if (!snapshot) return;
+
+    if (window.confirm(`🔄 Restaurer la sauvegarde du ${new Date(snapshot.timestamp).toLocaleString()} ?\n\n• ${snapshot.totalParticipants} participants\n• ${snapshot.totalTickets} tickets\n• ${snapshot.winnersCount} gagnants`)) {
+      
+      try {
+        ParticipantHistory.restoreSnapshot(snapshotId);
+        
+        // Recharger toutes les données
+        loadRealData();
+        const savedWinners = localStorage.getItem('tombolaWinners');
+        if (savedWinners) {
+          setWinners(JSON.parse(savedWinners));
+        }
+        
+        setSnapshots(ParticipantHistory.getSnapshots());
+        showToast('✅ Sauvegarde restaurée', `Snapshot ${snapshotId.split('_')[1]} chargé`);
+        
+      } catch (error) {
+        showToast('❌ Erreur', 'Impossible de restaurer la sauvegarde', 'red');
+      }
+    }
+  };
+
+  // ✅ FONCTION POUR EXPORTER UN SNAPSHOT
+  const exportSnapshot = (snapshotId) => {
+    const csv = ParticipantHistory.exportToCSV(snapshotId);
+    if (csv) {
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tombola_snapshot_${snapshotId}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      showToast('📊 Export CSV', 'Fichier téléchargé');
+    }
+  };
+
+  // ✅ FONCTION POUR SUPPRIMER UN SNAPSHOT
+  const deleteSnapshot = (snapshotId) => {
+    if (window.confirm('Supprimer cette sauvegarde ?')) {
+      const updatedSnapshots = ParticipantHistory.deleteSnapshot(snapshotId);
+      setSnapshots(updatedSnapshots);
+      showToast('🗑️ Sauvegarde supprimée', 'Snapshot effacé', 'red');
     }
   };
 
@@ -149,7 +205,7 @@ const AdminPanel = () => {
     toast.className = `fixed top-4 right-4 bg-${color}-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce`;
     toast.innerHTML = `
       <div class="flex items-center gap-3">
-        <span class="text-xl">${title.includes('✅') ? '✅' : title.includes('🗑️') ? '🗑️' : title.includes('🧪') ? '🧪' : '⚠️'}</span>
+        <span class="text-xl">${title.charAt(0)}</span>
         <div>
           <div class="font-semibold">${title}</div>
           <div class="text-sm opacity-90">${message}</div>
@@ -168,9 +224,7 @@ const AdminPanel = () => {
     window.location.hash = '#/';
   };
 
-  // Fonction pour forcer la mise à jour
   const forceRefresh = () => {
-    console.log('🔄 Forcer la mise à jour manuelle');
     loadRealData();
   };
 
@@ -203,6 +257,12 @@ const AdminPanel = () => {
               className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold"
             >
               🔄 Actualiser
+            </button>
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="bg-indigo-500 hover:bg-indigo-600 px-4 py-2 rounded-lg font-semibold"
+            >
+              📊 Historique
             </button>
             <button
               onClick={resetDraw}
@@ -265,14 +325,83 @@ const AdminPanel = () => {
           </div>
         </div>
 
-        {/* ANIMATION BILLES TOMBANTES AVEC RÉINITIALISATION */}
+        {/* ANIMATION BILLES TOMBANTES */}
         <BallDrop 
           participants={participants} 
           onWinnerSelected={handleWinnerSelected}
           resetTrigger={resetBallDrop}
         />
 
-        {/* SECTION GAGNANTS AVEC BOUTON RÉINITIALISATION */}
+        {/* SECTION HISTORIQUE DES SAUVEGARDES */}
+        {showHistory && (
+          <div className="bg-gray-800 rounded-lg p-6 mt-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">📊 Historique des Sauvegardes</h2>
+              <div className="text-sm text-gray-400">
+                {snapshots.length} sauvegarde(s)
+              </div>
+            </div>
+            
+            {snapshots.length > 0 ? (
+              <div className="space-y-4">
+                {snapshots.map((snapshot, index) => (
+                  <div key={snapshot.id} className="bg-gray-700 rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <div className="font-semibold">
+                          Sauvegarde #{snapshot.id.split('_')[1]}
+                        </div>
+                        <div className="text-sm text-gray-400">
+                          {new Date(snapshot.timestamp).toLocaleString()}
+                        </div>
+                        <div className="text-xs text-blue-400 mt-1">
+                          Raison: {snapshot.reason === 'reset_tirage' ? 'Réinitialisation tirage' : 'Réinitialisation complète'}
+                        </div>
+                      </div>
+                      <div className="text-right text-sm">
+                        <div>{snapshot.totalParticipants} participants</div>
+                        <div>{snapshot.totalTickets} tickets</div>
+                        <div>€{snapshot.totalRevenue} recettes</div>
+                        <div>{snapshot.winnersCount} gagnants</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => restoreSnapshot(snapshot.id)}
+                        className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm"
+                      >
+                        🔄 Restaurer
+                      </button>
+                      <button
+                        onClick={() => exportSnapshot(snapshot.id)}
+                        className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
+                      >
+                        📊 Export CSV
+                      </button>
+                      <button
+                        onClick={() => deleteSnapshot(snapshot.id)}
+                        className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
+                      >
+                        🗑️ Supprimer
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-400">
+                <div className="text-4xl mb-4">💾</div>
+                <p>Aucune sauvegarde disponible</p>
+                <p className="text-sm mt-2">
+                  Les sauvegardes sont créées automatiquement lors des réinitialisations
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* SECTION GAGNANTS */}
         {winners.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-6 mt-8">
             <div className="flex justify-between items-center mb-4">
@@ -375,6 +504,7 @@ const AdminPanel = () => {
               console.log('Participants:', participants);
               console.log('LiveStats:', liveStats);
               console.log('Gagnants:', winners);
+              console.log('Snapshots:', snapshots);
               console.log('ResetBallDrop counter:', resetBallDrop);
               TicketStorage.debugTickets();
             }}
