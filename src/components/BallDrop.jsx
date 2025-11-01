@@ -1,10 +1,21 @@
 import React, { useState, useEffect } from 'react';
 
-const BallDrop = ({ participants, onWinnerSelected }) => {
+const BallDrop = ({ participants, onWinnerSelected, resetTrigger }) => {
   const [dropping, setDropping] = useState(false);
   const [balls, setBalls] = useState([]);
   const [winnerBall, setWinnerBall] = useState(null);
   const [showResult, setShowResult] = useState(false);
+
+  // ✅ RÉINITIALISATION QUAND resetTrigger CHANGE
+  useEffect(() => {
+    if (resetTrigger) {
+      console.log('🔄 Réinitialisation de l\'animation BallDrop');
+      setDropping(false);
+      setBalls([]);
+      setWinnerBall(null);
+      setShowResult(false);
+    }
+  }, [resetTrigger]);
 
   const startBallDrop = () => {
     if (participants.length === 0) return;
@@ -111,6 +122,17 @@ const BallDrop = ({ participants, onWinnerSelected }) => {
               
               {/* Effet de lumière */}
               <div className="absolute -inset-4 bg-yellow-400 rounded-full opacity-20 animate-pulse"></div>
+            </div>
+          </div>
+        )}
+
+        {/* État vide après réinitialisation */}
+        {!dropping && !showResult && balls.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-gray-500 text-center">
+              <div className="text-6xl mb-4">🎱</div>
+              <p className="text-xl">Prêt pour le tirage</p>
+              <p className="text-sm mt-2">Cliquez sur "Lancer les billes"</p>
             </div>
           </div>
         )}
