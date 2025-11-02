@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Auth } from '../utils/auth';
 import BallDrop from './BallDrop';
 import { TicketStorage } from '../utils/ticketStorage';
-import { ParticipantHistory } from '../utils/participantHistory'; // ✅ NOUVEAU IMPORT
+import { ParticipantHistory } from '../utils/participantHistory';
+import { EmailVerification } from '../utils/emailVerification'; // ✅ NOUVEAU IMPORT
 
 const AdminPanel = () => {
   const [participants, setParticipants] = useState([]);
@@ -11,8 +12,8 @@ const AdminPanel = () => {
   const [liveStats, setLiveStats] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [resetBallDrop, setResetBallDrop] = useState(0);
-  const [snapshots, setSnapshots] = useState([]); // ✅ NOUVEAU STATE
-  const [showHistory, setShowHistory] = useState(false); // ✅ NOUVEAU STATE
+  const [snapshots, setSnapshots] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     if (Auth.isAuthenticated()) {
@@ -25,7 +26,7 @@ const AdminPanel = () => {
         setWinners(JSON.parse(savedWinners));
       }
 
-      // ✅ CHARGER L'HISTORIQUE DES SNAPSHOTS
+      // Charger l'historique des snapshots
       setSnapshots(ParticipantHistory.getSnapshots());
     } else {
       window.location.hash = '#/admin-login';
@@ -199,6 +200,73 @@ const AdminPanel = () => {
     }
   };
 
+  // ✅ FONCTION POUR ANALYSER TOUS LES EMAILS
+  const analyzeAllEmails = () => {
+    const report = EmailVerification.generateSuspiciousEmailsReport(participants);
+    
+    console.log('📊 Rapport des emails suspects:', report);
+    
+    // Afficher le rapport dans un modal
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+      <div class="bg-gray-800 p-6 rounded-lg max-w-4xl w-full mx-4 max-h-96 overflow-y-auto">
+        <h3 class="text-xl font-bold mb-4">📊 Analyse des Emails</h3>
+        
+        <div class="grid grid-cols-4 gap-4 mb-4">
+          <div class="bg-blue-600 p-3 rounded text-center">
+            <div class="text-2xl font-bold">${report.totalParticipants}</div>
+            <div class="text-sm">Total</div>
+          </div>
+          <div class="bg-red-600 p-3 rounded text-center">
+            <div class="text-2xl font-bold">${report.suspiciousCount}</div>
+            <div class="text-sm">Suspects</div>
+          </div>
+          <div class="bg-orange-600 p-3 rounded text-center">
+            <div class="text-2xl font-bold">${report.summary.duplicates}</div>
+            <div class="text-sm">Duplicatas</div>
+          </div>
+          <div class="bg-yellow-600 p-3 rounded text-center">
+            <div class="text-2xl font-bold">${report.summary.disposableDomains}</div>
+            <div class="text-sm">Domaines jetables</div>
+          </div>
+        </div>
+        
+        ${report.suspiciousEmails.length > 0 ? `
+          <div class="space-y-2">
+            <h4 class="font-semibold mb-2">Emails à vérifier :</h4>
+            ${report.suspiciousEmails.map(email => `
+              <div class="bg-gray-700 p-3 rounded">
+                <div class="flex justify-between">
+                  <div>
+                    <strong>${email.participant}</strong>
+                    <div class="text-sm text-gray-400">${email.email}</div>
+                  </div>
+                  <div class="text-right text-sm">
+                    <div>Score: ${email.analysis.score}/100</div>
+                    <div class="text-red-400">${email.analysis.domainAnalysis.reason || 'Problème détecté'}</div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        ` : `
+          <div class="text-center py-8 text-gray-400">
+            <div class="text-4xl mb-4">✅</div>
+            <p>Aucun email suspect détecté</p>
+          </div>
+        `}
+        
+        <button onclick="this.parentElement.parentElement.remove()" 
+                class="w-full mt-4 bg-gray-600 text-white py-2 rounded hover:bg-gray-700">
+          Fermer
+        </button>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+  };
+
   // ✅ FONCTION UTILITAIRE POUR LES TOASTS
   const showToast = (title, message, color = 'green') => {
     const toast = document.createElement('div');
@@ -263,6 +331,13 @@ const AdminPanel = () => {
               className="bg-indigo-500 hover:bg-indigo-600 px-4 py-2 rounded-lg font-semibold"
             >
               📊 Historique
+            </button>
+            <button
+              onClick={analyzeAllEmails}
+              className="bg-teal-500 hover:bg-teal-600 px-4 py-2 rounded-lg font-semibold"
+              disabled={participants.length === 0}
+            >
+              🔍 Vérifier Emails
             </button>
             <button
               onClick={resetDraw}
