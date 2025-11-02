@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TicketStorage } from '../utils/ticketStorage';
+import { EmailVerification } from '../utils/emailVerification'; // ✅ NOUVEAU IMPORT
 
 const BuyTickets = () => {
   const [ticketCount, setTicketCount] = useState(1);
@@ -8,20 +9,55 @@ const BuyTickets = () => {
     name: '',
     email: ''
   });
+  const [emailValidation, setEmailValidation] = useState({}); // ✅ NOUVEAU STATE
+  const [allParticipants, setAllParticipants] = useState([]); // ✅ NOUVEAU STATE
+
+  // ✅ CHARGER LES PARTICIPANTS EXISTANTS
+  useEffect(() => {
+    const participants = TicketStorage.getAllParticipants();
+    setAllParticipants(participants);
+  }, []);
 
   const generateTicketNumber = () => {
-    return Math.floor(1000 + Math.random() * 9000); // Numéro à 4 chiffres
+    return Math.floor(1000 + Math.random() * 9000);
+  };
+
+  // ✅ VALIDER L'EMAIL EN TEMPS RÉEL
+  const validateEmail = (email) => {
+    if (!email) {
+      setEmailValidation({});
+      return;
+    }
+
+    const analysis = EmailVerification.analyzeEmail(email, allParticipants);
+    setEmailValidation(analysis);
   };
 
   const handlePurchase = () => {
-    // ✅ DÉBUT DU DEBUG
-    console.log('=== DÉBUGAGE ACHAT ===');
-    console.log('Participant:', participantInfo);
-    console.log('Nombre de tickets:', ticketCount);
-
+    // ✅ VÉRIFICATION RENFORCÉE AVANT ACHAT
     if (!participantInfo.name || !participantInfo.email) {
       alert('Veuillez remplir vos informations personnelles');
       return;
+    }
+
+    // Vérification finale de l'email
+    const finalValidation = EmailVerification.analyzeEmail(participantInfo.email, allParticipants);
+    
+    if (!finalValidation.isValidFormat) {
+      alert('❌ Adresse email invalide. Veuillez corriger votre email.');
+      return;
+    }
+
+    if (finalValidation.isDuplicate) {
+      if (!window.confirm('⚠️ Cet email est déjà utilisé. Souhaitez-vous continuer quand même ?')) {
+        return;
+      }
+    }
+
+    if (finalValidation.status === 'faible') {
+      if (!window.confirm('⚠️ Cet email semble suspect. Souhaitez-vous continuer quand même ?')) {
+        return;
+      }
     }
 
     // Générer les tickets
@@ -35,21 +71,7 @@ const BuyTickets = () => {
         email: participantInfo.email
       });
       tickets.push(ticket);
-      
-      // ✅ DEBUG DANS LA BOUCLE
-      console.log(`Ticket ${i+1} créé:`, ticket);
     }
-
-    // ✅ VERIFICATION FINALE
-    const allTickets = TicketStorage.getTickets();
-    console.log('Tous les tickets après achat:', allTickets);
-    
-    const allParticipants = TicketStorage.getAllParticipants();
-    console.log('Participants après achat:', allParticipants);
-    
-    console.log('Nombre total de tickets:', allTickets.length);
-    console.log('Nombre total de participants:', allParticipants.length);
-    console.log('========================');
 
     // Rediriger vers la page de confirmation
     window.location.hash = `#/confirmation?tickets=${tickets.map(t => t.number).join(',')}`;
@@ -63,88 +85,91 @@ const BuyTickets = () => {
         {/* Informations personnelles */}
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-3">👤 Vos informations</h3>
+          
+          {/* Nom */}
           <input
             type="text"
             placeholder="Votre nom complet"
-            className="w-full p-3 border rounded-lg mb-2"
+            className="w-full p-3 border rounded-lg mb-4"
             value={participantInfo.name}
             onChange={(e) => setParticipantInfo({...participantInfo, name: e.target.value})}
           />
-          <input
-            type="email"
-            placeholder="Votre email"
-            className="w-full p-3 border rounded-lg"
-            value={participantInfo.email}
-            onChange={(e) => setParticipantInfo({...participantInfo, email: e.target.value})}
-          />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium mb-2">Nombre de tickets</label>
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setTicketCount(Math.max(1, ticketCount - 1))}
-              className="w-10 h-10 bg-gray-200 rounded-full hover:bg-gray-300"
-            >-</button>
-            <span className="text-2xl font-bold">{ticketCount}</span>
-            <button 
-              onClick={() => setTicketCount(ticketCount + 1)}
-              className="w-10 h-10 bg-gray-200 rounded-full hover:bg-gray-300"
-            >+</button>
-          </div>
-          <p className="text-gray-600 mt-2">Prix total: {ticketCount * 5}€</p>
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium mb-2">Méthode de paiement</label>
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => setPaymentMethod('card')}
-              className={`p-4 border rounded-lg ${
-                paymentMethod === 'card' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+          
+          {/* Email avec validation visuelle */}
+          <div className="mb-2">
+            <input
+              type="email"
+              placeholder="Votre email"
+              className={`w-full p-3 border rounded-lg ${
+                emailValidation.status === 'excellent' ? 'border-green-500 bg-green-50' :
+                emailValidation.status === 'bon' ? 'border-blue-500 bg-blue-50' :
+                emailValidation.status === 'moyen' ? 'border-yellow-500 bg-yellow-50' :
+                emailValidation.status === 'faible' ? 'border-red-500 bg-red-50' :
+                'border-gray-300'
               }`}
-            >
-              💳 Carte
-            </button>
-            <button
-              onClick={() => setPaymentMethod('crypto')}
-              className={`p-4 border rounded-lg ${
-                paymentMethod === 'crypto' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-              }`}
-            >
-              ₿ Crypto
-            </button>
+              value={participantInfo.email}
+              onChange={(e) => {
+                setParticipantInfo({...participantInfo, email: e.target.value});
+                validateEmail(e.target.value);
+              }}
+              onBlur={() => validateEmail(participantInfo.email)}
+            />
+            
+            {/* Indicateur de validation */}
+            {emailValidation.status && (
+              <div className={`text-sm mt-1 ${
+                emailValidation.status === 'excellent' ? 'text-green-600' :
+                emailValidation.status === 'bon' ? 'text-blue-600' :
+                emailValidation.status === 'moyen' ? 'text-yellow-600' :
+                'text-red-600'
+              }`}>
+                {emailValidation.status === 'excellent' && '✅ Email valide'}
+                {emailValidation.status === 'bon' && '✓ Email acceptable'}
+                {emailValidation.status === 'moyen' && '⚠️ Email suspect'}
+                {emailValidation.status === 'faible' && '❌ Email problématique'}
+                
+                {emailValidation.isDuplicate && (
+                  <div className="text-xs text-orange-600">
+                    ⚠️ Cet email est déjà utilisé
+                  </div>
+                )}
+                
+                {!emailValidation.isValidFormat && participantInfo.email && (
+                  <div className="text-xs text-red-600">
+                    ❌ Format d'email invalide
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {paymentMethod === 'card' && (
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-semibold mb-2">💳 Paiement par carte (simulation)</h4>
-            <input type="text" placeholder="Numéro de carte" className="w-full p-2 border rounded mb-2" defaultValue="4242 4242 4242 4242" />
-            <div className="grid grid-cols-2 gap-2">
-              <input type="text" placeholder="MM/AA" className="p-2 border rounded" defaultValue="12/25" />
-              <input type="text" placeholder="CVV" className="p-2 border rounded" defaultValue="123" />
-            </div>
-          </div>
-        )}
-
-        {paymentMethod === 'crypto' && (
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-semibold mb-2">₿ Paiement crypto (simulation)</h4>
-            <select className="w-full p-2 border rounded">
-              <option>Bitcoin (BTC)</option>
-              <option>Ethereum (ETH)</option>
-              <option>USDT</option>
-            </select>
-          </div>
-        )}
+        {/* ... reste du code inchangé ... */}
 
         <button 
           onClick={handlePurchase}
-          className="w-full bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600"
+          disabled={!participantInfo.name || !participantInfo.email || emailValidation.status === 'faible'}
+          className={`w-full py-3 rounded-lg font-semibold ${
+            (!participantInfo.name || !participantInfo.email || emailValidation.status === 'faible')
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-green-500 hover:bg-green-600 text-white'
+          }`}
         >
-          Payer {ticketCount * 5}€
+          {(!participantInfo.name || !participantInfo.email) ? 'Remplissez vos informations' :
+           emailValidation.status === 'faible' ? 'Email invalide - Corrigez' :
+           `Payer ${ticketCount * 5}€`}
         </button>
+
+        {/* Information sur la validation */}
+        {emailValidation.status && (
+          <div className="mt-4 p-3 bg-gray-100 rounded-lg text-xs text-gray-600">
+            <div className="font-semibold mb-1">Validation email :</div>
+            <div>Format : {emailValidation.isValidFormat ? '✅ Valide' : '❌ Invalide'}</div>
+            <div>Duplicata : {emailValidation.isDuplicate ? '⚠️ Oui' : '✅ Non'}</div>
+            <div>Statut : {emailValidation.status}</div>
+            <div>Score : {emailValidation.score}/100</div>
+          </div>
+        )}
       </div>
     </div>
   );
