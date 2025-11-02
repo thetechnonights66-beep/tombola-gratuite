@@ -3,7 +3,7 @@ import { Auth } from '../utils/auth';
 import BallDrop from './BallDrop';
 import { TicketStorage } from '../utils/ticketStorage';
 import { ParticipantHistory } from '../utils/participantHistory';
-import { EmailVerification } from '../utils/emailVerification'; // ✅ NOUVEAU IMPORT
+import { EmailVerification } from '../utils/emailVerification';
 
 const AdminPanel = () => {
   const [participants, setParticipants] = useState([]);
@@ -189,17 +189,6 @@ const AdminPanel = () => {
     }
   };
 
-  // ✅ FONCTION POUR GÉNÉRER DES PARTICIPANTS DE TEST
-  const generateTestParticipants = () => {
-    const count = parseInt(prompt('Combien de participants de test générer ?', '10')) || 10;
-    
-    if (count > 0) {
-      TicketStorage.generateTestTickets(count);
-      loadRealData();
-      showToast('🧪 Participants test générés', `${count} nouveaux participants ajoutés`);
-    }
-  };
-
   // ✅ FONCTION POUR ANALYSER TOUS LES EMAILS
   const analyzeAllEmails = () => {
     const report = EmailVerification.generateSuspiciousEmailsReport(participants);
@@ -265,6 +254,17 @@ const AdminPanel = () => {
     `;
     
     document.body.appendChild(modal);
+  };
+
+  // ✅ FONCTION POUR GÉNÉRER DES PARTICIPANTS DE TEST
+  const generateTestParticipants = () => {
+    const count = parseInt(prompt('Combien de participants de test générer ?', '10')) || 10;
+    
+    if (count > 0) {
+      TicketStorage.generateTestTickets(count);
+      loadRealData();
+      showToast('🧪 Participants test générés', `${count} nouveaux participants ajoutés`);
+    }
   };
 
   // ✅ FONCTION UTILITAIRE POUR LES TOASTS
@@ -338,6 +338,12 @@ const AdminPanel = () => {
               disabled={participants.length === 0}
             >
               🔍 Vérifier Emails
+            </button>
+            <button
+              onClick={() => window.location.hash = '#/prize-manager'}
+              className="bg-pink-500 hover:bg-pink-600 px-4 py-2 rounded-lg font-semibold"
+            >
+              🎁 Gérer Lots
             </button>
             <button
               onClick={resetDraw}
