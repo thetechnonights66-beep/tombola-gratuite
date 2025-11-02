@@ -7,6 +7,7 @@ import Confirmation from './components/Confirmation';
 import MyTickets from './components/MyTickets';
 import AdminLogin from './components/AdminLogin';
 import LiveDraw from './components/LiveDraw';
+import PrizeManager from './components/PrizeManager'; // ✅ NOUVEAU IMPORT
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/live" element={<LiveDraw />} />
+          <Route path="/prize-manager" element={<PrizeManager />} /> {/* ✅ NOUVELLE ROUTE */}
         </Routes>
       </div>
     </Router>
