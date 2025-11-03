@@ -340,6 +340,12 @@ const AdminPanel = () => {
               🔍 Vérifier Emails
             </button>
             <button
+              onClick={() => window.location.hash = '#/referral-admin'}
+              className="bg-indigo-500 hover:bg-indigo-600 px-4 py-2 rounded-lg font-semibold"
+            >
+              👥 Admin Parrainage
+            </button>
+            <button
               onClick={() => window.location.hash = '#/prize-manager'}
               className="bg-pink-500 hover:bg-pink-600 px-4 py-2 rounded-lg font-semibold"
             >
