@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TicketStorage } from '../utils/ticketStorage';
-import { EmailVerification } from '../utils/emailVerification'; // ✅ NOUVEAU IMPORT
+import { EmailVerification } from '../utils/emailVerification';
+import { ReferralSystem } from '../utils/referralSystem'; // ✅ NOUVEAU IMPORT
 
 const BuyTickets = () => {
   const [ticketCount, setTicketCount] = useState(1);
@@ -9,8 +10,12 @@ const BuyTickets = () => {
     name: '',
     email: ''
   });
-  const [emailValidation, setEmailValidation] = useState({}); // ✅ NOUVEAU STATE
-  const [allParticipants, setAllParticipants] = useState([]); // ✅ NOUVEAU STATE
+  const [emailValidation, setEmailValidation] = useState({});
+  const [allParticipants, setAllParticipants] = useState([]);
+  
+  // ✅ STATES POUR LE PARRAINAGE
+  const [referralCode, setReferralCode] = useState('');
+  const [referralResult, setReferralResult] = useState(null);
 
   // ✅ CHARGER LES PARTICIPANTS EXISTANTS
   useEffect(() => {
@@ -31,6 +36,16 @@ const BuyTickets = () => {
 
     const analysis = EmailVerification.analyzeEmail(email, allParticipants);
     setEmailValidation(analysis);
+  };
+
+  // ✅ GÉRER LE PARRAINAGE
+  const handleReferral = () => {
+    if (referralCode.trim()) {
+      const result = ReferralSystem.registerReferral(referralCode, participantInfo);
+      setReferralResult(result);
+      return result.success;
+    }
+    return true;
   };
 
   const handlePurchase = () => {
@@ -60,6 +75,11 @@ const BuyTickets = () => {
       }
     }
 
+    // ✅ GÉRER LE PARRAINAGE AVANT ACHAT
+    if (!handleReferral()) {
+      return; // Arrêter si le parrainage échoue
+    }
+
     // Générer les tickets
     const tickets = [];
     for (let i = 0; i < ticketCount; i++) {
@@ -71,6 +91,11 @@ const BuyTickets = () => {
         email: participantInfo.email
       });
       tickets.push(ticket);
+    }
+
+    // ✅ VALIDER LE PARRAINAGE APRÈS ACHAT RÉUSSI
+    if (referralResult && referralResult.success) {
+      ReferralSystem.validateReferral(participantInfo.email);
     }
 
     // Rediriger vers la page de confirmation
@@ -144,8 +169,99 @@ const BuyTickets = () => {
           </div>
         </div>
 
-        {/* ... reste du code inchangé ... */}
+        {/* ✅ SECTION PARRAINAGE */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium mb-2">
+            <span className="flex items-center gap-2">
+              👥 Code de parrainage 
+              <span className="text-xs text-gray-500">(optionnel)</span>
+            </span>
+          </label>
+          <input
+            type="text"
+            placeholder="Ex: TOMBO-MARIE-ABC123"
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+          />
+          <p className="text-xs text-gray-600 mt-2">
+            💡 <strong>Comment ça marche ?</strong> Si un ami vous a donné son code, saisissez-le ici. 
+            Cela lui offrira 1 point vers un ticket gratuit après 5 parrainages validés.
+          </p>
+          
+          {/* Afficher le résultat du parrainage */}
+          {referralResult && (
+            <div className={`mt-3 p-3 rounded-lg text-sm ${
+              referralResult.success 
+                ? 'bg-green-100 border border-green-400 text-green-700'
+                : 'bg-red-100 border border-red-400 text-red-700'
+            }`}>
+              <div className="font-semibold">
+                {referralResult.success ? '✅ Succès !' : '❌ Attention'}
+              </div>
+              {referralResult.message}
+              {referralResult.referrerName && (
+                <div className="mt-1 text-xs">
+                  Vous parrainez : <strong>{referralResult.referrerName}</strong>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
+        {/* Sélection du nombre de tickets */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-3">🎫 Nombre de tickets</h3>
+          <div className="flex gap-2 mb-4">
+            {[1, 3, 5, 10].map((count) => (
+              <button
+                key={count}
+                onClick={() => setTicketCount(count)}
+                className={`flex-1 py-2 rounded-lg font-semibold ${
+                  ticketCount === count
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-gray-200 text-gray-700'
+                }`}
+              >
+                {count}
+              </button>
+            ))}
+          </div>
+          <div className="text-center text-lg font-semibold">
+            Total : {ticketCount * 5}€
+          </div>
+        </div>
+
+        {/* Méthode de paiement */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-3">💳 Méthode de paiement</h3>
+          <div className="space-y-2">
+            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer">
+              <input
+                type="radio"
+                name="payment"
+                value="card"
+                checked={paymentMethod === 'card'}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="text-purple-500"
+              />
+              <span>Carte bancaire</span>
+            </label>
+            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer">
+              <input
+                type="radio"
+                name="payment"
+                value="paypal"
+                checked={paymentMethod === 'paypal'}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="text-purple-500"
+              />
+              <span>PayPal</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Bouton de paiement */}
         <button 
           onClick={handlePurchase}
           disabled={!participantInfo.name || !participantInfo.email || emailValidation.status === 'faible'}
