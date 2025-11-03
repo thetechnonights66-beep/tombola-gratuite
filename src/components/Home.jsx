@@ -1,30 +1,19 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Countdown from './Countdown';
+import { PrizeManager } from '../utils/prizeManager'; // ✅ NOUVEAU IMPORT
 
 const Home = () => {
-  const prizes = [
-    { 
-      emoji: "🚗", 
-      name: "Voiture Tesla", 
-      value: "45,000€",
-      image: "https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=300&h=200&fit=crop",
-      description: "Tesla Model 3 neuve - Autonomie 500km"
-    },
-    { 
-      emoji: "✈️", 
-      name: "Voyage aux Maldives", 
-      value: "5,000€",
-      image: "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=300&h=200&fit=crop",
-      description: "7 nuits tout inclus dans un resort 5 étoiles"
-    },
-    { 
-      emoji: "💎", 
-      name: "Bague en diamant", 
-      value: "2,500€",
-      image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=300&h=200&fit=crop",
-      description: "Bague en or blanc avec diamant 1 carat"
-    }
-  ];
+  const [prizes, setPrizes] = useState([]); // ✅ REMPLACE LE TABLEAU STATIQUE
+
+  useEffect(() => {
+    // ✅ CHARGER LES LOTS DEPUIS LE GESTIONNAIRE
+    const loadedPrizes = PrizeManager.getPrizes();
+    // Filtrer seulement les lots actifs et les trier par ordre
+    const activePrizes = loadedPrizes
+      .filter(prize => prize.isActive)
+      .sort((a, b) => a.order - b.order);
+    setPrizes(activePrizes);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-500 text-white">
@@ -42,14 +31,19 @@ const Home = () => {
           </p>
         </div>
         
+        {/* ✅ AFFICHAGE DYNAMIQUE DES LOTS */}
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12">
           {prizes.map((prize, index) => (
-            <div key={index} className="bg-white/20 rounded-xl backdrop-blur border border-white/30 overflow-hidden hover:scale-105 transition duration-300">
+            <div key={prize.id} className="bg-white/20 rounded-xl backdrop-blur border border-white/30 overflow-hidden hover:scale-105 transition duration-300">
               <div className="h-48 bg-gray-300 overflow-hidden">
                 <img 
                   src={prize.image} 
                   alt={prize.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Image de fallback si l'URL est invalide
+                    e.target.src = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=200&fit=crop';
+                  }}
                 />
               </div>
               
@@ -63,12 +57,35 @@ const Home = () => {
                 <p className="text-white/80 text-sm mb-4">{prize.description}</p>
                 
                 <div className="bg-white/10 rounded-lg p-3 text-center">
-                  <span className="text-sm">🎯 Lot {index + 1}</span>
+                  <span className="text-sm">🎯 Lot {prize.order}</span>
                 </div>
+
+                {/* Indicateur si le lot a déjà un gagnant */}
+                {prize.winner && (
+                  <div className="mt-3 bg-green-500/20 border border-green-400 rounded-lg p-2 text-center">
+                    <span className="text-xs text-green-300">🏆 Déjà attribué</span>
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
+
+        {/* Message si aucun lot n'est configuré */}
+        {prizes.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🎁</div>
+            <h3 className="text-2xl font-bold mb-4">Lots en cours de préparation</h3>
+            <p className="text-white/80 mb-6">
+              Les lots exceptionnels de cette tombola seront annoncés très bientôt !
+            </p>
+            <div className="bg-white/10 rounded-lg p-6 max-w-md mx-auto">
+              <p className="text-sm">
+                Revenez dans quelques instants pour découvrir les lots à gagner...
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto mb-12">
           <div className="bg-white/20 p-6 rounded-lg backdrop-blur">
