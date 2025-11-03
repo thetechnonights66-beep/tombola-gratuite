@@ -4,6 +4,7 @@ import BallDrop from './BallDrop';
 import { TicketStorage } from '../utils/ticketStorage';
 import { ParticipantHistory } from '../utils/participantHistory';
 import { EmailVerification } from '../utils/emailVerification';
+import { EventSystem } from '../utils/eventSystem'; // ✅ AJOUTER CET IMPORT
 
 const AdminPanel = () => {
   const [participants, setParticipants] = useState([]);
@@ -44,15 +45,53 @@ const AdminPanel = () => {
     setLastUpdate(new Date());
   };
 
-  // ✅ Surveillance en temps réel
+  // ✅ SURVEILLANCE EN TEMPS RÉEL AVEC ÉVÉNEMENTS
   useEffect(() => {
     if (!isAuthenticated) return;
 
+    // ✅ GESTIONNAIRES D'ÉVÉNEMENTS
+    const handleTicketsUpdated = (event) => {
+      console.log('🎯 Événement ticketsUpdated reçu:', event.detail);
+      loadRealData();
+    };
+
+    const handleParticipantsUpdated = (event) => {
+      console.log('🎯 Événement participantsUpdated reçu:', event.detail);
+      loadRealData();
+    };
+
+    const handleDrawReset = (event) => {
+      console.log('🎯 Événement drawReset reçu:', event.detail);
+      loadRealData();
+      setWinners([]);
+    };
+
+    const handleParticipantsReset = (event) => {
+      console.log('🎯 Événement participantsReset reçu:', event.detail);
+      loadRealData();
+      setWinners([]);
+      setLiveStats(null);
+    };
+
+    // ✅ S'ABONNER AUX ÉVÉNEMENTS
+    EventSystem.on(EventSystem.EVENTS.TICKETS_UPDATED, handleTicketsUpdated);
+    EventSystem.on(EventSystem.EVENTS.PARTICIPANTS_UPDATED, handleParticipantsUpdated);
+    EventSystem.on(EventSystem.EVENTS.DRAW_RESET, handleDrawReset);
+    EventSystem.on(EventSystem.EVENTS.PARTICIPANTS_RESET, handleParticipantsReset);
+
+    // ✅ INTERVALLE DE SAUVEGARDE (garder pour la redondance)
     const interval = setInterval(() => {
       loadRealData();
     }, 3000);
 
-    return () => clearInterval(interval);
+    // ✅ NETTOYAGE
+    return () => {
+      clearInterval(interval);
+      EventSystem.off(EventSystem.EVENTS.TICKETS_UPDATED, handleTicketsUpdated);
+      EventSystem.off(EventSystem.EVENTS.PARTICIPANTS_UPDATED, handleParticipantsUpdated);
+      EventSystem.off(EventSystem.EVENTS.DRAW_RESET, handleDrawReset);
+      EventSystem.off(EventSystem.EVENTS.PARTICIPANTS_RESET, handleParticipantsReset);
+    };
   }, [isAuthenticated]);
 
   const handleWinnerSelected = (winner) => {
@@ -66,6 +105,9 @@ const AdminPanel = () => {
     const updatedWinners = [...winners, newWinner];
     setWinners(updatedWinners);
     localStorage.setItem('tombolaWinners', JSON.stringify(updatedWinners));
+    
+    // ✅ ÉMETTRE UN ÉVÉNEMENT DE MISE À JOUR DES GAGNANTS
+    EventSystem.emitWinnersUpdated(updatedWinners.length);
   };
 
   // ✅ FONCTION RÉINITIALISATION AVEC SAUVEGARDE
@@ -93,6 +135,10 @@ const AdminPanel = () => {
       }));
       localStorage.setItem('tombolaTickets', JSON.stringify(updatedTickets));
       
+      // ✅ ÉMETTRE L'ÉVÉNEMENT DE RÉINITIALISATION
+      EventSystem.emitDrawReset('manual_reset');
+      EventSystem.emitWinnersUpdated(0);
+      
       // ✅ RÉINITIALISATION DE L'ANIMATION
       setResetBallDrop(prev => prev + 1);
       
@@ -118,7 +164,7 @@ const AdminPanel = () => {
         );
         
         // Supprimer tous les tickets
-        TicketStorage.clearAllTickets();
+        TicketStorage.clearAllTickets(); // ✅ CETTE FONCTION ÉMET DÉJÀ LES ÉVÉNEMENTS
         
         // Réinitialiser tous les états
         setParticipants([]);
@@ -127,6 +173,10 @@ const AdminPanel = () => {
         
         // Supprimer aussi les gagnants
         localStorage.removeItem('tombolaWinners');
+        
+        // ✅ ÉMETTRE L'ÉVÉNEMENT DE RÉINITIALISATION
+        EventSystem.emitParticipantsReset('manual_clear');
+        EventSystem.emitWinnersUpdated(0);
         
         // Réinitialiser l'animation
         setResetBallDrop(prev => prev + 1);
@@ -157,6 +207,12 @@ const AdminPanel = () => {
         }
         
         setSnapshots(ParticipantHistory.getSnapshots());
+        
+        // ✅ ÉMETTRE LES ÉVÉNEMENTS DE MISE À JOUR
+        EventSystem.emitTicketsUpdated(snapshot.totalTickets);
+        EventSystem.emitParticipantsUpdated(snapshot.totalParticipants);
+        EventSystem.emitWinnersUpdated(snapshot.winnersCount);
+        
         showToast('✅ Sauvegarde restaurée', `Snapshot ${snapshotId.split('_')[1]} chargé`);
         
       } catch (error) {
@@ -409,6 +465,11 @@ const AdminPanel = () => {
               {liveStats ? `€${liveStats.totalRevenue}` : '...'}
             </div>
             <div>Recettes Réelles</div>
+            {liveStats?.ticketsBySource && (
+              <div className="text-xs text-yellow-200 mt-1">
+                Parrainage: {liveStats.ticketsBySource.referral_reward || 0} tickets
+              </div>
+            )}
           </div>
         </div>
 
@@ -546,6 +607,7 @@ const AdminPanel = () => {
                     <th className="text-left p-2">Email</th>
                     <th className="text-left p-2">Tickets</th>
                     <th className="text-left p-2">Dépense</th>
+                    <th className="text-left p-2">Source</th>
                     <th className="text-left p-2">Premier achat</th>
                   </tr>
                 </thead>
@@ -562,6 +624,16 @@ const AdminPanel = () => {
                       <td className="p-2">
                         <span className="bg-green-500 text-white px-2 py-1 rounded text-sm">
                           €{participant.totalSpent}
+                        </span>
+                      </td>
+                      <td className="p-2">
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          participant.source === 'referral_reward' ? 'bg-purple-500 text-white' :
+                          participant.source === 'test_generation' ? 'bg-gray-500 text-white' :
+                          'bg-blue-500 text-white'
+                        }`}>
+                          {participant.source === 'referral_reward' ? '🎁 Parrainage' :
+                           participant.source === 'test_generation' ? '🧪 Test' : '🛒 Achat'}
                         </span>
                       </td>
                       <td className="p-2 text-sm text-gray-400">
