@@ -4,7 +4,8 @@ import BallDrop from './BallDrop';
 import { TicketStorage } from '../utils/ticketStorage';
 import { ParticipantHistory } from '../utils/participantHistory';
 import { EmailVerification } from '../utils/emailVerification';
-import { EventSystem } from '../utils/eventSystem'; // ✅ AJOUTER CET IMPORT
+import { EventSystem } from '../utils/eventSystem';
+import { WhatsAppService } from '../utils/whatsappService'; // ✅ AJOUT IMPORT WHATSAPP
 
 const AdminPanel = () => {
   const [participants, setParticipants] = useState([]);
@@ -94,12 +95,14 @@ const AdminPanel = () => {
     };
   }, [isAuthenticated]);
 
+  // ✅ MODIFIER handleWinnerSelected POUR WHATSAPP
   const handleWinnerSelected = (winner) => {
     const newWinner = {
       participant: winner.name,
       ticketNumber: winner.ticketNumber,
       prize: `Lot ${winners.length + 1}`,
-      time: new Date().toLocaleTimeString()
+      time: new Date().toLocaleTimeString(),
+      phone: winner.phone // ✅ STOCKER LE TÉLÉPHONE
     };
     
     const updatedWinners = [...winners, newWinner];
@@ -108,6 +111,30 @@ const AdminPanel = () => {
     
     // ✅ ÉMETTRE UN ÉVÉNEMENT DE MISE À JOUR DES GAGNANTS
     EventSystem.emitWinnersUpdated(updatedWinners.length);
+    
+    // ✅ CRÉER UN LIEN WHATSAPP POUR LE GAGNANT
+    if (winner.phone) {
+      const whatsappLink = WhatsAppService.generateWinnerLink(
+        winner.phone,
+        winner.name, 
+        newWinner.prize,
+        winner.ticketNumber
+      );
+      
+      // Afficher le lien à l'admin
+      showToast(
+        '📱 Lien WhatsApp Gagnant', 
+        `Lien créé pour ${winner.name}`,
+        'green'
+      );
+      
+      // Option : ouvrir directement
+      setTimeout(() => {
+        if (window.confirm(`Ouvrir WhatsApp pour notifier ${winner.name} ?`)) {
+          window.open(whatsappLink, '_blank');
+        }
+      }, 1000);
+    }
   };
 
   // ✅ FONCTION RÉINITIALISATION AVEC SAUVEGARDE
@@ -572,6 +599,11 @@ const AdminPanel = () => {
                   <div className="font-semibold text-lg">{winner.participant}</div>
                   <div>Ticket #{winner.ticketNumber} - {winner.prize}</div>
                   <div className="text-sm text-green-200">{winner.time}</div>
+                  {winner.phone && (
+                    <div className="text-xs text-green-300 mt-1">
+                      📱 {winner.phone}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -605,6 +637,7 @@ const AdminPanel = () => {
                   <tr className="border-b border-gray-700">
                     <th className="text-left p-2">Nom</th>
                     <th className="text-left p-2">Email</th>
+                    <th className="text-left p-2">Téléphone</th>
                     <th className="text-left p-2">Tickets</th>
                     <th className="text-left p-2">Dépense</th>
                     <th className="text-left p-2">Source</th>
@@ -616,6 +649,13 @@ const AdminPanel = () => {
                     <tr key={participant.id || index} className="border-b border-gray-700 hover:bg-gray-700">
                       <td className="p-2 font-semibold">{participant.name}</td>
                       <td className="p-2">{participant.email}</td>
+                      <td className="p-2">
+                        {participant.phone ? (
+                          <span className="text-green-400">📱 {participant.phone}</span>
+                        ) : (
+                          <span className="text-gray-500 text-sm">Aucun</span>
+                        )}
+                      </td>
                       <td className="p-2">
                         <span className="bg-blue-500 text-white px-2 py-1 rounded text-sm">
                           {participant.tickets}
