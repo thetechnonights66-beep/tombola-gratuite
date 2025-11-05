@@ -1,18 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Countdown from './Countdown';
-import { PrizeManager } from '../utils/prizeManager'; // ✅ NOUVEAU IMPORT
+import Footer from './Footer'; // ✅ IMPORT DU FOOTER
 
 const Home = () => {
-  const [prizes, setPrizes] = useState([]); // ✅ REMPLACE LE TABLEAU STATIQUE
+  const [prizes, setPrizes] = useState([]);
 
+  // Charger les lots depuis le localStorage
   useEffect(() => {
-    // ✅ CHARGER LES LOTS DEPUIS LE GESTIONNAIRE
-    const loadedPrizes = PrizeManager.getPrizes();
-    // Filtrer seulement les lots actifs et les trier par ordre
-    const activePrizes = loadedPrizes
-      .filter(prize => prize.isActive)
-      .sort((a, b) => a.order - b.order);
-    setPrizes(activePrizes);
+    const savedPrizes = localStorage.getItem('tombolaPrizes');
+    if (savedPrizes) {
+      setPrizes(JSON.parse(savedPrizes));
+    } else {
+      // Lots par défaut
+      const defaultPrizes = [
+        {
+          id: 1,
+          name: "Voyage en Italie",
+          description: "Weekend romantique à Venise pour 2 personnes",
+          value: "€1,500",
+          emoji: "🇮🇹",
+          order: 1,
+          image: "https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?w=300&h=200&fit=crop"
+        },
+        {
+          id: 2,
+          name: "iPhone 15 Pro",
+          description: "Dernier modèle 256GB",
+          value: "€1,200",
+          emoji: "📱",
+          order: 2,
+          image: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=300&h=200&fit=crop"
+        },
+        {
+          id: 3,
+          name: "Bon d'achat Amazon",
+          description: "Dépensez-le comme vous voulez !",
+          value: "€500",
+          emoji: "📦",
+          order: 3,
+          image: "https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?w=300&h=200&fit=crop"
+        }
+      ];
+      setPrizes(defaultPrizes);
+      localStorage.setItem('tombolaPrizes', JSON.stringify(defaultPrizes));
+    }
   }, []);
 
   return (
@@ -122,6 +153,9 @@ const Home = () => {
           </button>
         </div>
       </div>
+
+      {/* ✅ FOOTER AJOUTÉ ICI */}
+      <Footer />
     </div>
   );
 };
