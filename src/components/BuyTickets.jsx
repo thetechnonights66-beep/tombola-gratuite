@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { TicketStorage } from '../utils/ticketStorage';
 import { EmailVerification } from '../utils/emailVerification';
-import { ReferralSystem } from '../utils/referralSystem'; // ✅ NOUVEAU IMPORT
+import { ReferralSystem } from '../utils/referralSystem';
 
 const BuyTickets = () => {
   const [ticketCount, setTicketCount] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [participantInfo, setParticipantInfo] = useState({
     name: '',
-    email: ''
+    email: '',
+    phone: '' // ✅ NOUVEAU CHAMP
   });
   const [emailValidation, setEmailValidation] = useState({});
   const [allParticipants, setAllParticipants] = useState([]);
@@ -88,7 +89,8 @@ const BuyTickets = () => {
         number: ticketNumber,
         price: 5,
         participant: participantInfo.name,
-        email: participantInfo.email
+        email: participantInfo.email,
+        phone: participantInfo.phone // ✅ SAUVEGARDE DU TÉLÉPHONE
       });
       tickets.push(ticket);
     }
@@ -98,8 +100,15 @@ const BuyTickets = () => {
       ReferralSystem.validateReferral(participantInfo.email);
     }
 
-    // Rediriger vers la page de confirmation
-    window.location.hash = `#/confirmation?tickets=${tickets.map(t => t.number).join(',')}`;
+    // ✅ REDIRECTION AVEC TOUTES LES INFOS
+    const queryParams = new URLSearchParams({
+      tickets: tickets.map(t => t.number).join(','),
+      name: participantInfo.name,
+      phone: participantInfo.phone || '',
+      email: participantInfo.email
+    });
+
+    window.location.hash = `#/confirmation?${queryParams.toString()}`;
   };
 
   return (
@@ -121,7 +130,7 @@ const BuyTickets = () => {
           />
           
           {/* Email avec validation visuelle */}
-          <div className="mb-2">
+          <div className="mb-4">
             <input
               type="email"
               placeholder="Votre email"
@@ -166,6 +175,26 @@ const BuyTickets = () => {
                 )}
               </div>
             )}
+          </div>
+
+          {/* ✅ NOUVEAU CHAMP WHATSAPP */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">
+              <span className="flex items-center gap-2">
+                📱 Numéro WhatsApp 
+                <span className="text-xs text-gray-500">(recommandé)</span>
+              </span>
+            </label>
+            <input
+              type="tel"
+              placeholder="+33 6 12 34 56 78"
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              value={participantInfo.phone}
+              onChange={(e) => setParticipantInfo({...participantInfo, phone: e.target.value})}
+            />
+            <p className="text-xs text-gray-600 mt-2">
+              💡 Recevez confirmations et résultats instantanément sur WhatsApp !
+            </p>
           </div>
         </div>
 
@@ -286,6 +315,20 @@ const BuyTickets = () => {
             <div>Score : {emailValidation.score}/100</div>
           </div>
         )}
+
+        {/* ✅ AVANTAGE WHATSAPP VISIBLE */}
+        <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <h4 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
+            <span>📱</span>
+            Pourquoi ajouter WhatsApp ?
+          </h4>
+          <ul className="text-xs text-green-700 space-y-1">
+            <li>• ✅ Confirmation immédiate de vos tickets</li>
+            <li>• 🔔 Rappel automatique du tirage</li>
+            <li>• 🎊 Résultats instantanés si vous gagnez</li>
+            <li>• 📞 Support prioritaire en cas de besoin</li>
+          </ul>
+        </div>
       </div>
     </div>
   );
