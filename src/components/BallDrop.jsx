@@ -1,149 +1,202 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const BallDrop = ({ participants, onWinnerSelected, resetTrigger }) => {
-  const [dropping, setDropping] = useState(false);
-  const [balls, setBalls] = useState([]);
-  const [winnerBall, setWinnerBall] = useState(null);
-  const [showResult, setShowResult] = useState(false);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [winner, setWinner] = useState(null);
+  const [displayNumber, setDisplayNumber] = useState('');
+  const [animationPhase, setAnimationPhase] = useState('idle'); // idle, shuffling, revealing, winner
+  const canvasRef = useRef(null);
+  const animationRef = useRef(null);
 
   // ✅ RÉINITIALISATION QUAND resetTrigger CHANGE
   useEffect(() => {
     if (resetTrigger) {
       console.log('🔄 Réinitialisation de l\'animation BallDrop');
-      setDropping(false);
-      setBalls([]);
-      setWinnerBall(null);
-      setShowResult(false);
+      setWinner(null);
+      setDisplayNumber('');
+      setAnimationPhase('idle');
+      setIsDrawing(false);
     }
   }, [resetTrigger]);
 
-  const startBallDrop = () => {
-    if (participants.length === 0) return;
-    
-    setDropping(true);
-    setWinnerBall(null);
-    setShowResult(false);
-    
-    // Créer des billes avec les participants
-    const ballCount = Math.min(15, participants.length);
-    const newBalls = Array.from({ length: ballCount }, (_, i) => {
-      const participant = participants[Math.floor(Math.random() * participants.length)];
-      return {
-        id: i,
-        participant: participant,
-        position: -100, // Commence en haut
-        delay: i * 150, // Délai progressif
-        size: 50 + Math.random() * 20, // Taille aléatoire
-        color: `hsl(${Math.random() * 360}, 70%, 60%)`, // Couleur aléatoire
-        rotation: Math.random() * 360 // Rotation aléatoire
-      };
-    });
-    
-    setBalls(newBalls);
+  const startDraw = () => {
+    if (participants.length === 0) {
+      alert('Aucun participant pour le moment !');
+      return;
+    }
 
-    // Animation de chute et sélection du gagnant
-    setTimeout(() => {
-      const winnerIndex = Math.floor(Math.random() * participants.length);
-      const selectedWinner = participants[winnerIndex];
-      setWinnerBall(selectedWinner);
-      setDropping(false);
-      setShowResult(true);
+    setIsDrawing(true);
+    setWinner(null);
+    setDisplayNumber('');
+    setAnimationPhase('shuffling');
+    
+    // Phase 1: Mélange des numéros (3 secondes)
+    const numbers = participants.flatMap(p => 
+      Array.isArray(p.ticketNumbers) ? p.ticketNumbers : []
+    );
+    
+    let shuffleCount = 0;
+    const maxShuffles = 60; // 3 secondes à 20fps
+    
+    const shuffleInterval = setInterval(() => {
+      const randomIndex = Math.floor(Math.random() * numbers.length);
+      setDisplayNumber(numbers[randomIndex] || '0000');
+      shuffleCount++;
       
-      setTimeout(() => {
-        onWinnerSelected(selectedWinner);
-      }, 3000);
-    }, 4000);
+      if (shuffleCount >= maxShuffles) {
+        clearInterval(shuffleInterval);
+        revealWinner();
+      }
+    }, 50);
   };
 
-  // Animation continue des billes pendant la chute
-  useEffect(() => {
-    if (dropping) {
-      const interval = setInterval(() => {
-        setBalls(prev => prev.map(ball => ({
-          ...ball,
-          position: ball.position + 2 + Math.random() * 3, // Chute à vitesse variable
-          rotation: ball.rotation + (Math.random() * 10 - 5) // Rotation aléatoire
-        })));
-      }, 50);
-
-      return () => clearInterval(interval);
+  const revealWinner = () => {
+    setAnimationPhase('revealing');
+    
+    // Sélectionner un vrai gagnant
+    const validParticipants = participants.filter(p => 
+      p.ticketNumbers && p.ticketNumbers.length > 0
+    );
+    
+    if (validParticipants.length === 0) {
+      setAnimationPhase('idle');
+      setIsDrawing(false);
+      return;
     }
-  }, [dropping]);
+
+    const randomIndex = Math.floor(Math.random() * validParticipants.length);
+    const selectedWinner = validParticipants[randomIndex];
+    const winningTicket = selectedWinner.ticketNumbers[0]; // Prendre le premier ticket
+    
+    // Animation de révélation finale
+    let revealCount = 0;
+    const revealInterval = setInterval(() => {
+      const partialNumber = winningTicket.toString().slice(0, revealCount + 1);
+      setDisplayNumber(partialNumber.padEnd(4, '?'));
+      revealCount++;
+      
+      if (revealCount >= 4) {
+        clearInterval(revealInterval);
+        finalizeWinner(selectedWinner, winningTicket);
+      }
+    }, 300);
+  };
+
+  const finalizeWinner = (winner, ticketNumber) => {
+    setAnimationPhase('winner');
+    setWinner(winner);
+    setDisplayNumber(ticketNumber.toString().padStart(4, '0'));
+    
+    // ✅ Émettre l'événement avec toutes les informations (y compris le téléphone)
+    setTimeout(() => {
+      onWinnerSelected({
+        name: winner.name,
+        ticketNumber: ticketNumber,
+        phone: winner.phone // ✅ INCLURE LE TÉLÉPHONE POUR WHATSAPP
+      });
+      
+      // Reset après 5 secondes
+      setTimeout(() => {
+        setIsDrawing(false);
+        setAnimationPhase('idle');
+      }, 5000);
+    }, 2000);
+  };
+
+  const getAnimationClass = () => {
+    switch (animationPhase) {
+      case 'shuffling':
+        return 'animate-pulse text-yellow-400';
+      case 'revealing':
+        return 'animate-bounce text-green-400';
+      case 'winner':
+        return 'animate-pulse text-red-500 scale-110';
+      default:
+        return 'text-gray-300';
+    }
+  };
+
+  const getBackgroundClass = () => {
+    switch (animationPhase) {
+      case 'shuffling':
+        return 'bg-yellow-500/20 border-yellow-400';
+      case 'revealing':
+        return 'bg-green-500/20 border-green-400';
+      case 'winner':
+        return 'bg-red-500/20 border-red-400 animate-pulse';
+      default:
+        return 'bg-gray-800 border-gray-600';
+    }
+  };
 
   return (
     <div className="bg-gray-800 rounded-2xl p-8 text-center border-4 border-yellow-500 shadow-2xl">
       <h3 className="text-3xl font-bold text-white mb-6 flex items-center justify-center gap-3">
-        🎱 Tirage aux Billes
+        🎪 Tirage au Sort
       </h3>
-      
-      {/* Zone d'animation des billes */}
-      <div className="h-80 bg-gradient-to-b from-gray-900 to-black rounded-lg mb-6 relative overflow-hidden border-2 border-gray-600">
-        {/* Lignes de fond pour l'effet de profondeur */}
-        <div className="absolute inset-0 opacity-20">
-          {Array.from({ length: 10 }, (_, i) => (
-            <div key={i} className="h-px bg-white w-full mb-8" style={{ marginTop: i * 40 }}></div>
-          ))}
+
+      {/* AFFICHAGE PRINCIPAL DU NUMÉRO */}
+      <div className={`relative border-4 rounded-2xl p-8 mb-8 transition-all duration-500 ${getBackgroundClass()}`}>
+        
+        {/* Titre selon la phase */}
+        <div className="text-center mb-6">
+          <h2 className="text-3xl font-bold text-white">
+            {animationPhase === 'shuffling' && '🎰 Mélange en cours...'}
+            {animationPhase === 'revealing' && '🎯 Révélation du gagnant...'}
+            {animationPhase === 'winner' && '🏆 GAGNANT !'}
+            {animationPhase === 'idle' && '🎪 Prêt pour le tirage'}
+          </h2>
         </div>
-        
-        {/* Billes tombantes */}
-        {balls.map(ball => (
-          <div
-            key={ball.id}
-            className="absolute rounded-full flex items-center justify-center text-white font-bold shadow-lg animate-bounce"
-            style={{
-              left: `${10 + (ball.id * 6)}%`,
-              top: `${ball.position}px`,
-              width: `${ball.size}px`,
-              height: `${ball.size}px`,
-              background: `radial-gradient(circle at 30% 30%, ${ball.color}, ${ball.color}dd)`,
-              animationDelay: `${ball.delay}ms`,
-              transform: `rotate(${ball.rotation}deg)`,
-              boxShadow: 'inset -5px -5px 10px rgba(0,0,0,0.5), inset 5px 5px 10px rgba(255,255,255,0.3)'
-            }}
-          >
-            <span className="text-xs">{ball.id + 1}</span>
+
+        {/* Numéro affiché */}
+        <div className="text-center">
+          <div className={`text-8xl md:text-9xl font-mono font-bold transition-all duration-300 ${getAnimationClass()}`}>
+            {displayNumber || '????'}
           </div>
-        ))}
-        
-        {/* Zone d'impact en bas */}
-        <div className="absolute bottom-0 left-0 right-0 h-4 bg-yellow-500 opacity-60"></div>
-        
-        {/* Bille gagnante qui émerge */}
-        {showResult && winnerBall && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative">
-              {/* Bille gagnante avec effet de brillance */}
-              <div className="relative">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-r from-yellow-400 to-red-500 flex items-center justify-center text-white font-bold text-xl shadow-2xl animate-ping">
-                  🎯
-                </div>
-                <div className="absolute inset-0 w-32 h-32 rounded-full bg-gradient-to-r from-yellow-400 to-red-500 animate-pulse"></div>
-              </div>
-              
-              {/* Effet de lumière */}
-              <div className="absolute -inset-4 bg-yellow-400 rounded-full opacity-20 animate-pulse"></div>
-            </div>
+        </div>
+
+        {/* Effets visuels */}
+        {animationPhase === 'shuffling' && (
+          <div className="absolute inset-0 flex justify-between items-center px-8">
+            <div className="w-4 h-4 bg-yellow-400 rounded-full animate-ping"></div>
+            <div className="w-4 h-4 bg-yellow-400 rounded-full animate-ping" style={{animationDelay: '0.2s'}}></div>
+            <div className="w-4 h-4 bg-yellow-400 rounded-full animate-ping" style={{animationDelay: '0.4s'}}></div>
           </div>
         )}
 
-        {/* État vide après réinitialisation */}
-        {!dropping && !showResult && balls.length === 0 && (
+        {animationPhase === 'winner' && (
+          <>
+            <div className="absolute -top-4 -right-4 text-4xl animate-bounce">🎉</div>
+            <div className="absolute -top-4 -left-4 text-4xl animate-bounce" style={{animationDelay: '0.3s'}}>🥳</div>
+            <div className="absolute -bottom-4 -right-4 text-4xl animate-bounce" style={{animationDelay: '0.6s'}}>🎊</div>
+            <div className="absolute -bottom-4 -left-4 text-4xl animate-bounce" style={{animationDelay: '0.9s'}}>🏆</div>
+          </>
+        )}
+
+        {/* État vide */}
+        {animationPhase === 'idle' && !displayNumber && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-gray-500 text-center">
-              <div className="text-6xl mb-4">🎱</div>
-              <p className="text-xl">Prêt pour le tirage</p>
-              <p className="text-sm mt-2">Cliquez sur "Lancer les billes"</p>
+              <div className="text-6xl mb-4">🎯</div>
+              <p className="text-xl">En attente du tirage</p>
+              <p className="text-sm mt-2">Cliquez sur "Lancer le tirage"</p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Résultat avec animation */}
-      {showResult && winnerBall && (
-        <div className="bg-gradient-to-r from-green-600 to-emerald-700 rounded-2xl p-6 text-white mb-6 animate-winner-pop border-2 border-green-400">
+      {/* INFORMATIONS DU GAGNANT */}
+      {winner && (
+        <div className="bg-gradient-to-r from-green-600 to-emerald-700 rounded-2xl p-6 mb-6 text-white animate-winner-pop border-2 border-green-400">
           <div className="text-4xl mb-3">🏆</div>
-          <div className="text-2xl font-bold mb-2">{winnerBall.name}</div>
-          <div className="text-lg opacity-90">Ticket #{winnerBall.ticketNumber || Math.floor(Math.random() * 1000)}</div>
+          <div className="text-2xl font-bold mb-2">{winner.name}</div>
+          <div className="text-lg opacity-90">Ticket #{displayNumber}</div>
+          {winner.email && (
+            <div className="text-sm opacity-75 mt-1">Email: {winner.email}</div>
+          )}
+          {winner.phone && (
+            <div className="text-sm opacity-75 mt-1">📱 {winner.phone}</div>
+          )}
           <div className="text-sm opacity-75 mt-2">Félicitations !</div>
           
           {/* Confettis animés */}
@@ -154,35 +207,61 @@ const BallDrop = ({ participants, onWinnerSelected, resetTrigger }) => {
         </div>
       )}
 
-      <button
-        onClick={startBallDrop}
-        disabled={dropping || participants.length === 0}
-        className={`px-8 py-4 rounded-full text-xl font-bold transition-all duration-300 ${
-          dropping 
-            ? 'bg-gray-600 cursor-not-allowed' 
-            : participants.length === 0
-            ? 'bg-gray-500 cursor-not-allowed'
-            : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transform hover:scale-105 shadow-lg'
-        } text-white`}
-      >
-        {dropping ? (
-          <span className="flex items-center gap-2">
-            <div className="animate-spin">🎱</div>
-            Billes en chute...
-          </span>
-        ) : participants.length === 0 ? (
-          'Aucun participant'
+      {/* BOUTON DE TIRAGE */}
+      <div className="text-center">
+        {!isDrawing ? (
+          <button
+            onClick={startDraw}
+            disabled={participants.length === 0}
+            className={`px-8 py-4 rounded-full text-xl font-bold transition-all duration-300 ${
+              participants.length === 0 
+                ? 'bg-gray-600 cursor-not-allowed' 
+                : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transform hover:scale-105 shadow-lg text-white'
+            }`}
+          >
+            🎯 Lancer le tirage
+            {participants.length > 0 && (
+              <span className="block text-sm mt-1 opacity-80">
+                {participants.length} participants • {participants.flatMap(p => p.ticketNumbers || []).length} tickets
+              </span>
+            )}
+          </button>
         ) : (
-          <span className="flex items-center gap-2">
-            🎱 Lancer les billes
-          </span>
+          <div className="text-gray-400 text-lg">
+            <span className="flex items-center justify-center gap-2">
+              <div className="animate-spin">🎰</div>
+              Tirage en cours...
+            </span>
+          </div>
         )}
-      </button>
+      </div>
 
       {/* Compteur de participants */}
       <div className="mt-4 text-gray-400">
         {participants.length} participant(s) dans le tirage
       </div>
+
+      {/* PARTICIPANTS EN ATTENTE */}
+      {participants.length > 0 && animationPhase === 'idle' && (
+        <div className="mt-8 bg-gray-700 rounded-2xl p-6">
+          <h3 className="text-xl font-bold mb-4 text-center text-white">🎫 Participants en attente</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-h-40 overflow-y-auto">
+            {participants.slice(0, 12).map((participant, index) => (
+              <div key={index} className="bg-gray-600 rounded-lg p-3 text-center">
+                <div className="font-semibold text-sm truncate text-white">{participant.name}</div>
+                <div className="text-xs text-gray-300">
+                  {(participant.ticketNumbers?.length || 1)} ticket(s)
+                </div>
+              </div>
+            ))}
+            {participants.length > 12 && (
+              <div className="bg-gray-600 rounded-lg p-3 text-center">
+                <div className="font-semibold text-sm text-white">+{participants.length - 12} autres</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
