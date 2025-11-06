@@ -57,21 +57,27 @@ body {
   }
 }
 
-/* Classes d'animation */
-.animate-winner-pop {
-  animation: winner-pop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+/* ✅ NOUVELLES ANIMATIONS AJOUTÉES */
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
 }
 
-.animate-ball-bounce {
-  animation: ball-bounce 2s ease-in-out infinite;
-}
-
-.animate-glow {
-  animation: glow 2s ease-in-out infinite;
-}
-
-.animate-confetti {
-  animation: confetti 1s ease-out forwards;
+@keyframes confetti-fall {
+  0% { 
+    transform: translateY(0) rotate(0deg); 
+    opacity: 1; 
+  }
+  100% { 
+    transform: translateY(100vh) rotate(360deg); 
+    opacity: 0; 
+  }
 }
 
 /* Animation spéciale pour les billes */
@@ -89,10 +95,6 @@ body {
   }
 }
 
-.animate-ball-drop {
-  animation: ball-drop 3s ease-in forwards;
-}
-
 /* Effet de scintillement pour la bille gagnante */
 @keyframes sparkle {
   0%, 100% { 
@@ -103,10 +105,6 @@ body {
     opacity: 0.7; 
     transform: scale(1.1); 
   }
-}
-
-.animate-sparkle {
-  animation: sparkle 0.6s ease-in-out infinite;
 }
 
 /* Animation de vibration pour le bouton */
@@ -122,6 +120,224 @@ body {
   }
 }
 
+/* ✅ ANIMATION PULSE AMÉLIORÉE */
+@keyframes enhanced-pulse {
+  0%, 100% { 
+    transform: scale(1); 
+    opacity: 1; 
+  }
+  50% { 
+    transform: scale(1.05); 
+    opacity: 0.8; 
+  }
+}
+
+/* ✅ ANIMATION BOUNCE AMÉLIORÉE */
+@keyframes enhanced-bounce {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  40%, 43% {
+    transform: translate3d(0, -15px, 0);
+  }
+  70% {
+    transform: translate3d(0, -8px, 0);
+  }
+  90% {
+    transform: translate3d(0, -3px, 0);
+  }
+}
+
+/* ✅ ANIMATION SPIN AMÉLIORÉE */
+@keyframes enhanced-spin {
+  from { 
+    transform: rotate(0deg); 
+  }
+  to { 
+    transform: rotate(360deg); 
+  }
+}
+
+/* ✅ ANIMATION SHAKE POUR LES ERREURS */
+@keyframes shake {
+  0%, 100% { 
+    transform: translateX(0); 
+  }
+  10%, 30%, 50%, 70%, 90% { 
+    transform: translateX(-5px); 
+  }
+  20%, 40%, 60%, 80% { 
+    transform: translateX(5px); 
+  }
+}
+
+/* Classes d'animation */
+.animate-winner-pop {
+  animation: winner-pop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.animate-ball-bounce {
+  animation: ball-bounce 2s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.animate-confetti {
+  animation: confetti 1s ease-out forwards;
+}
+
+.animate-ball-drop {
+  animation: ball-drop 3s ease-in forwards;
+}
+
+.animate-sparkle {
+  animation: sparkle 0.6s ease-in-out infinite;
+}
+
 .animate-vibrate {
   animation: vibrate 0.3s ease-in-out infinite;
+}
+
+/* ✅ NOUVELLES CLASSES D'ANIMATION */
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.confetti {
+  animation: confetti-fall 3s ease-in forwards;
+}
+
+.animate-enhanced-pulse {
+  animation: enhanced-pulse 2s ease-in-out infinite;
+}
+
+.animate-enhanced-bounce {
+  animation: enhanced-bounce 1s ease-in-out infinite;
+}
+
+.animate-enhanced-spin {
+  animation: enhanced-spin 1s linear infinite;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* ✅ ANIMATIONS RESPONSIVES */
+@media (max-width: 768px) {
+  .animate-ball-drop {
+    animation-duration: 2s;
+  }
+  
+  .animate-winner-pop {
+    animation-duration: 0.6s;
+  }
+}
+
+/* ✅ TRANSITIONS PERSONNALISÉES */
+.smooth-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bounce-transition {
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* ✅ EFFETS DE SURVOL AMÉLIORÉS */
+.hover-lift {
+  transition: transform 0.2s ease-in-out;
+}
+
+.hover-lift:hover {
+  transform: translateY(-5px);
+}
+
+.hover-glow {
+  transition: box-shadow 0.3s ease-in-out;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+}
+
+/* ✅ ANIMATION DE CHARGEMENT */
+@keyframes loading-dots {
+  0%, 20% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.loading-dots span {
+  animation: loading-dots 1.4s ease-in-out infinite;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* ✅ EFFET DE PROFONDEUR */
+.depth-1 {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.depth-2 {
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16);
+}
+
+.depth-3 {
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19);
+}
+
+.depth-4 {
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25);
+}
+
+/* ✅ GRADIENTS ANIMÉS */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient {
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+/* ✅ SUPPORT POUR LE MODE SOMBRE */
+@media (prefers-color-scheme: dark) {
+  .dark-animate-glow {
+    animation: glow 2s ease-in-out infinite;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+}
+
+/* ✅ ACCESSIBILITÉ - Réduire les animations si demandé */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
