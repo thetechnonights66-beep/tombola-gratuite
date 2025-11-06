@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TicketStorage } from '../utils/ticketStorage';
 import { EmailVerification } from '../utils/emailVerification';
 import { ReferralSystem } from '../utils/referralSystem';
+import { WhatsAppService } from '../utils/whatsappService'; // ✅ IMPORT WHATSAPP
 
 const BuyTickets = () => {
   const [ticketCount, setTicketCount] = useState(1);
@@ -9,12 +10,10 @@ const BuyTickets = () => {
   const [participantInfo, setParticipantInfo] = useState({
     name: '',
     email: '',
-    phone: '' // ✅ NOUVEAU CHAMP
+    phone: '' // ✅ CHAMP WHATSAPP
   });
   const [emailValidation, setEmailValidation] = useState({});
   const [allParticipants, setAllParticipants] = useState([]);
-  
-  // ✅ STATES POUR LE PARRAINAGE
   const [referralCode, setReferralCode] = useState('');
   const [referralResult, setReferralResult] = useState(null);
 
@@ -34,7 +33,6 @@ const BuyTickets = () => {
       setEmailValidation({});
       return;
     }
-
     const analysis = EmailVerification.analyzeEmail(email, allParticipants);
     setEmailValidation(analysis);
   };
@@ -100,12 +98,14 @@ const BuyTickets = () => {
       ReferralSystem.validateReferral(participantInfo.email);
     }
 
-    // ✅ REDIRECTION AVEC TOUTES LES INFOS
+    // ✅ REDIRIGER VERS LA PAGE DE CONFIRMATION AVEC WHATSAPP
     const queryParams = new URLSearchParams({
       tickets: tickets.map(t => t.number).join(','),
       name: participantInfo.name,
-      phone: participantInfo.phone || '',
-      email: participantInfo.email
+      email: participantInfo.email,
+      phone: participantInfo.phone || '', // ✅ TRANSMETTRE LE TÉLÉPHONE
+      count: ticketCount,
+      amount: ticketCount * 5
     });
 
     window.location.hash = `#/confirmation?${queryParams.toString()}`;
@@ -124,7 +124,7 @@ const BuyTickets = () => {
           <input
             type="text"
             placeholder="Votre nom complet"
-            className="w-full p-3 border rounded-lg mb-4"
+            className="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             value={participantInfo.name}
             onChange={(e) => setParticipantInfo({...participantInfo, name: e.target.value})}
           />
@@ -134,7 +134,7 @@ const BuyTickets = () => {
             <input
               type="email"
               placeholder="Votre email"
-              className={`w-full p-3 border rounded-lg ${
+              className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                 emailValidation.status === 'excellent' ? 'border-green-500 bg-green-50' :
                 emailValidation.status === 'bon' ? 'border-blue-500 bg-blue-50' :
                 emailValidation.status === 'moyen' ? 'border-yellow-500 bg-yellow-50' :
@@ -177,7 +177,7 @@ const BuyTickets = () => {
             )}
           </div>
 
-          {/* ✅ NOUVEAU CHAMP WHATSAPP */}
+          {/* ✅ CHAMP WHATSAPP AJOUTÉ */}
           <div className="mb-4">
             <label className="block text-sm font-medium mb-2">
               <span className="flex items-center gap-2">
@@ -188,12 +188,12 @@ const BuyTickets = () => {
             <input
               type="tel"
               placeholder="+33 6 12 34 56 78"
-              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
               value={participantInfo.phone}
               onChange={(e) => setParticipantInfo({...participantInfo, phone: e.target.value})}
             />
             <p className="text-xs text-gray-600 mt-2">
-              💡 Recevez confirmations et résultats instantanément sur WhatsApp !
+              💡 <strong>Recommandé :</strong> Recevez confirmation et résultats instantanément sur WhatsApp !
             </p>
           </div>
         </div>
@@ -246,10 +246,10 @@ const BuyTickets = () => {
               <button
                 key={count}
                 onClick={() => setTicketCount(count)}
-                className={`flex-1 py-2 rounded-lg font-semibold ${
+                className={`flex-1 py-2 rounded-lg font-semibold transition-all duration-200 ${
                   ticketCount === count
-                    ? 'bg-purple-500 text-white'
-                    : 'bg-gray-200 text-gray-700'
+                    ? 'bg-purple-500 text-white shadow-md'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
                 {count}
@@ -265,25 +265,25 @@ const BuyTickets = () => {
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-3">💳 Méthode de paiement</h3>
           <div className="space-y-2">
-            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer">
+            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition">
               <input
                 type="radio"
                 name="payment"
                 value="card"
                 checked={paymentMethod === 'card'}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className="text-purple-500"
+                className="text-purple-500 focus:ring-purple-500"
               />
               <span>Carte bancaire</span>
             </label>
-            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer">
+            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition">
               <input
                 type="radio"
                 name="payment"
                 value="paypal"
                 checked={paymentMethod === 'paypal'}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className="text-purple-500"
+                className="text-purple-500 focus:ring-purple-500"
               />
               <span>PayPal</span>
             </label>
@@ -294,10 +294,10 @@ const BuyTickets = () => {
         <button 
           onClick={handlePurchase}
           disabled={!participantInfo.name || !participantInfo.email || emailValidation.status === 'faible'}
-          className={`w-full py-3 rounded-lg font-semibold ${
+          className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 ${
             (!participantInfo.name || !participantInfo.email || emailValidation.status === 'faible')
               ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-green-500 hover:bg-green-600 text-white'
+              : 'bg-green-500 hover:bg-green-600 text-white transform hover:scale-105 shadow-md'
           }`}
         >
           {(!participantInfo.name || !participantInfo.email) ? 'Remplissez vos informations' :
@@ -323,10 +323,22 @@ const BuyTickets = () => {
             Pourquoi ajouter WhatsApp ?
           </h4>
           <ul className="text-xs text-green-700 space-y-1">
-            <li>• ✅ Confirmation immédiate de vos tickets</li>
-            <li>• 🔔 Rappel automatique du tirage</li>
-            <li>• 🎊 Résultats instantanés si vous gagnez</li>
-            <li>• 📞 Support prioritaire en cas de besoin</li>
+            <li className="flex items-center gap-2">
+              <span className="text-green-600">✅</span>
+              Confirmation immédiate de vos tickets
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-green-600">🔔</span>
+              Rappel automatique du tirage
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-green-600">🎊</span>
+              Résultats instantanés si vous gagnez
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-green-600">📞</span>
+              Support prioritaire en cas de besoin
+            </li>
           </ul>
         </div>
       </div>
