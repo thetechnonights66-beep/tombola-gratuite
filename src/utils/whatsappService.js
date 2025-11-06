@@ -1,13 +1,78 @@
 // src/utils/whatsappService.js
 export const WhatsAppService = {
   
-  // Générer les liens WhatsApp pré-remplis
-  generateMessageLinks(phone, name, ticketNumbers, amount) {
+  // ✅ FORMATAGE CORRECT POUR LES NUMÉROS INTERNATIONAUX
+  formatPhoneNumber(phone) {
     if (!phone) return null;
     
-    // Nettoyer le numéro (supprimer espaces, +, etc.)
-    const cleanPhone = phone.replace(/[\s+]/g, '');
+    // Supprimer uniquement les espaces, garder le +
+    let cleanPhone = phone.replace(/\s/g, '');
     
+    // Vérifier et corriger le format international
+    if (cleanPhone.startsWith('00')) {
+      // Convertir 00... en +...
+      cleanPhone = '+' + cleanPhone.substring(2);
+    } else if (cleanPhone.startsWith('0') && !cleanPhone.startsWith('+')) {
+      // Numéro français sans indicatif → ajouter +33
+      cleanPhone = '+33' + cleanPhone.substring(1);
+    } else if (!cleanPhone.startsWith('+')) {
+      // Numéro sans indicatif → supposer que c'est un numéro français
+      cleanPhone = '+33' + cleanPhone;
+    }
+    
+    // Vérifier la longueur minimale
+    if (cleanPhone.length < 10) {
+      console.warn('❌ Numéro trop court:', cleanPhone);
+      return null;
+    }
+    
+    console.log('✅ Numéro formaté:', cleanPhone);
+    return cleanPhone;
+  },
+
+  // ✅ VALIDATION AMÉLIORÉE DU NUMÉRO
+  validatePhoneNumber(phone) {
+    if (!phone) {
+      return { 
+        isValid: false, 
+        error: 'Numéro de téléphone requis' 
+      };
+    }
+    
+    const formattedPhone = this.formatPhoneNumber(phone);
+    
+    if (!formattedPhone) {
+      return { 
+        isValid: false, 
+        error: 'Format de numéro invalide. Ex: +33 6 12 34 56 78 ou 06 12 34 56 78' 
+      };
+    }
+    
+    // Vérification plus poussée du format international
+    const internationalRegex = /^\+\d{10,15}$/;
+    if (!internationalRegex.test(formattedPhone)) {
+      return { 
+        isValid: false, 
+        error: 'Format international invalide. Le numéro doit commencer par + suivi de 10 à 15 chiffres' 
+      };
+    }
+    
+    return { 
+      isValid: true, 
+      cleanPhone: formattedPhone,
+      whatsappLink: `https://wa.me/${formattedPhone}`
+    };
+  },
+
+  // Générer les liens WhatsApp pré-remplis
+  generateMessageLinks(phone, name, ticketNumbers, amount) {
+    const validation = this.validatePhoneNumber(phone);
+    if (!validation.isValid) {
+      console.warn('❌ Numéro invalide:', validation.error);
+      return null;
+    }
+    
+    const formattedPhone = validation.cleanPhone;
     const ticketsList = ticketNumbers.join(', ');
     const currentDate = new Date().toLocaleDateString('fr-FR');
     
@@ -46,20 +111,25 @@ Ne manquez pas le tirage ! 🤞
     `.trim();
 
     return {
-      purchaseConfirmation: `https://wa.me/${cleanPhone}?text=${encodeURIComponent(purchaseMessage)}`,
-      drawReminder: `https://wa.me/${cleanPhone}?text=${encodeURIComponent(reminderMessage)}`,
+      purchaseConfirmation: `https://wa.me/${formattedPhone}?text=${encodeURIComponent(purchaseMessage)}`,
+      drawReminder: `https://wa.me/${formattedPhone}?text=${encodeURIComponent(reminderMessage)}`,
       rawMessages: {
         purchase: purchaseMessage,
         reminder: reminderMessage
-      }
+      },
+      validation: validation
     };
   },
 
   // Générer un lien pour un gagnant
   generateWinnerLink(phone, name, prize, ticketNumber) {
-    if (!phone) return null;
+    const validation = this.validatePhoneNumber(phone);
+    if (!validation.isValid) {
+      console.warn('❌ Numéro invalide pour le gagnant:', validation.error);
+      return null;
+    }
     
-    const cleanPhone = phone.replace(/[\s+]/g, '');
+    const formattedPhone = validation.cleanPhone;
     
     const winnerMessage = `
 🏆 *VOUS AVEZ GAGNÉ ! - Tombola Excursion* 🎪
@@ -78,30 +148,14 @@ ou par email : contact@tombola-excursion.fr
 Félicitations encore ! 🥳
     `.trim();
 
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(winnerMessage)}`;
+    return {
+      link: `https://wa.me/${formattedPhone}?text=${encodeURIComponent(winnerMessage)}`,
+      message: winnerMessage,
+      validation: validation
+    };
   },
 
-  // ✅ NOUVELLE FONCTION : Valider le format du numéro
-  validatePhoneNumber(phone) {
-    if (!phone) return { isValid: false, error: 'Numéro requis' };
-    
-    // Nettoyer le numéro
-    const cleanPhone = phone.replace(/[\s+]/g, '');
-    
-    // Regex pour numéros français (06, 07, +33)
-    const frenchPhoneRegex = /^(?:(?:\+|00)33|0)[1-9](\d{2}){4}$/;
-    
-    if (!frenchPhoneRegex.test(cleanPhone)) {
-      return { 
-        isValid: false, 
-        error: 'Format invalide. Ex: +33 6 12 34 56 78 ou 06 12 34 56 78' 
-      };
-    }
-    
-    return { isValid: true, cleanPhone };
-  },
-
-  // ✅ NOUVELLE FONCTION : Générer un lien de contact général
+  // ✅ GÉNÉRER UN LIEN DE CONTACT GÉNÉRAL
   generateContactLink(message = '') {
     const defaultMessage = `
 📞 *CONTACT - Tombola Excursion* 🎪
@@ -114,16 +168,20 @@ Pouvez-vous me renseigner ?
     `.trim();
     
     const finalMessage = message || defaultMessage;
-    const contactPhone = '33123456789'; // Numéro de contact par défaut
+    const contactPhone = '+33123456789'; // Numéro de contact par défaut formaté international
     
     return `https://wa.me/${contactPhone}?text=${encodeURIComponent(finalMessage)}`;
   },
 
-  // ✅ NOUVELLE FONCTION : Générer un message de parrainage
+  // ✅ GÉNÉRER UN MESSAGE DE PARRAINAGE
   generateReferralLink(phone, name, referralCode) {
-    if (!phone) return null;
+    const validation = this.validatePhoneNumber(phone);
+    if (!validation.isValid) {
+      console.warn('❌ Numéro invalide pour le parrainage:', validation.error);
+      return null;
+    }
     
-    const cleanPhone = this.validatePhoneNumber(phone).cleanPhone;
+    const formattedPhone = validation.cleanPhone;
     
     const referralMessage = `
 👥 *PARRAINAGE - Tombola Excursion* 🎪
@@ -145,6 +203,58 @@ Partagez votre code de parrainage :
 Merci de faire connaître notre tombola ! 🤝
     `.trim();
 
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(referralMessage)}`;
+    return {
+      link: `https://wa.me/${formattedPhone}?text=${encodeURIComponent(referralMessage)}`,
+      message: referralMessage,
+      validation: validation
+    };
+  },
+
+  // ✅ TESTER LE FORMATAGE (UTILE POUR LE DÉBUGAGE)
+  testPhoneFormat(phone) {
+    const validation = this.validatePhoneNumber(phone);
+    return {
+      original: phone,
+      formatted: validation.cleanPhone,
+      isValid: validation.isValid,
+      error: validation.error,
+      whatsappLink: validation.whatsappLink,
+      testLinks: validation.isValid ? this.generateMessageLinks(phone, 'Test', ['1234', '5678'], 10) : null
+    };
+  },
+
+  // ✅ GÉNÉRER UN LIEN WHATSAPP SIMPLE (SANS MESSAGE PRÉ-REMPLI)
+  generateSimpleLink(phone) {
+    const validation = this.validatePhoneNumber(phone);
+    if (!validation.isValid) return null;
+    
+    return validation.whatsappLink;
+  },
+
+  // ✅ VALIDATION EN TEMPS RÉEL POUR LES FORMULAIRES
+  validatePhoneInRealTime(phone) {
+    if (!phone) {
+      return { isValid: false, message: 'Saisissez votre numéro' };
+    }
+    
+    // Validation basique de longueur
+    if (phone.replace(/\s/g, '').length < 8) {
+      return { isValid: false, message: 'Numéro trop court' };
+    }
+    
+    const validation = this.validatePhoneNumber(phone);
+    
+    if (validation.isValid) {
+      return { 
+        isValid: true, 
+        message: '✅ Format valide',
+        formatted: validation.cleanPhone
+      };
+    } else {
+      return { 
+        isValid: false, 
+        message: validation.error
+      };
+    }
   }
 };
