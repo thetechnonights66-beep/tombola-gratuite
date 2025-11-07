@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TicketStorage } from '../utils/ticketStorage';
 import { EmailVerification } from '../utils/emailVerification';
 import { ReferralSystem } from '../utils/referralSystem';
-import { WhatsAppService } from '../utils/whatsappService'; // ✅ IMPORT WHATSAPP
+import { WhatsAppService } from '../utils/whatsappService';
 
 const BuyTickets = () => {
   const [ticketCount, setTicketCount] = useState(1);
@@ -13,6 +13,7 @@ const BuyTickets = () => {
     phone: '' // ✅ CHAMP WHATSAPP
   });
   const [emailValidation, setEmailValidation] = useState({});
+  const [phoneValidation, setPhoneValidation] = useState({}); // ✅ VALIDATION TÉLÉPHONE
   const [allParticipants, setAllParticipants] = useState([]);
   const [referralCode, setReferralCode] = useState('');
   const [referralResult, setReferralResult] = useState(null);
@@ -35,6 +36,17 @@ const BuyTickets = () => {
     }
     const analysis = EmailVerification.analyzeEmail(email, allParticipants);
     setEmailValidation(analysis);
+  };
+
+  // ✅ VALIDER LE NUMÉRO EN TEMPS RÉEL
+  const validatePhone = (phone) => {
+    if (!phone) {
+      setPhoneValidation({});
+      return;
+    }
+
+    const testResult = WhatsAppService.testPhoneFormat(phone);
+    setPhoneValidation(testResult);
   };
 
   // ✅ GÉRER LE PARRAINAGE
@@ -177,7 +189,7 @@ const BuyTickets = () => {
             )}
           </div>
 
-          {/* ✅ CHAMP WHATSAPP AJOUTÉ */}
+          {/* ✅ CHAMP WHATSAPP AVEC VALIDATION EN TEMPS RÉEL */}
           <div className="mb-4">
             <label className="block text-sm font-medium mb-2">
               <span className="flex items-center gap-2">
@@ -187,14 +199,58 @@ const BuyTickets = () => {
             </label>
             <input
               type="tel"
-              placeholder="+33 6 12 34 56 78"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              placeholder="+33 6 12 34 56 78 ou 06 12 34 56 78"
+              className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
+                phoneValidation.isValid ? 'border-green-500 bg-green-50' :
+                phoneValidation.original && !phoneValidation.isValid ? 'border-red-500 bg-red-50' :
+                'border-gray-300'
+              }`}
               value={participantInfo.phone}
-              onChange={(e) => setParticipantInfo({...participantInfo, phone: e.target.value})}
+              onChange={(e) => {
+                setParticipantInfo({...participantInfo, phone: e.target.value});
+                validatePhone(e.target.value);
+              }}
+              onBlur={() => validatePhone(participantInfo.phone)}
             />
+            
+            {/* Instructions pour le format */}
             <p className="text-xs text-gray-600 mt-2">
-              💡 <strong>Recommandé :</strong> Recevez confirmation et résultats instantanément sur WhatsApp !
+              💡 <strong>Formats acceptés :</strong> +33 6 12 34 56 78 • 06 12 34 56 78 • 0612345678
             </p>
+            <p className="text-xs text-blue-600 mt-1">
+              🌍 <strong>International :</strong> +1 555 123 4567 • +44 7911 123456 • +49 151 12345678
+            </p>
+            
+            {/* ✅ AFFICHER LA VALIDATION DU TÉLÉPHONE */}
+            {phoneValidation.original && (
+              <div className={`text-xs mt-2 p-2 rounded ${
+                phoneValidation.isValid 
+                  ? 'bg-green-100 text-green-700 border border-green-300' 
+                  : 'bg-red-100 text-red-700 border border-red-300'
+              }`}>
+                {phoneValidation.isValid ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600">✅</span>
+                    <div>
+                      <strong>Numéro valide</strong>
+                      <div className="text-green-600 text-xs">
+                        Formaté : {phoneValidation.formatted}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-red-600">❌</span>
+                    <div>
+                      <strong>Numéro invalide</strong>
+                      <div className="text-red-600 text-xs">
+                        Utilisez le format international
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
