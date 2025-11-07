@@ -91,7 +91,7 @@ const BuyTickets = () => {
       return; // Arrêter si le parrainage échoue
     }
 
-    // Générer les tickets
+    // ✅ GÉNÉRATION DES TICKETS (ça fonctionne)
     const tickets = [];
     for (let i = 0; i < ticketCount; i++) {
       const ticketNumber = generateTicketNumber();
@@ -100,7 +100,7 @@ const BuyTickets = () => {
         price: 5,
         participant: participantInfo.name,
         email: participantInfo.email,
-        phone: participantInfo.phone // ✅ SAUVEGARDE DU TÉLÉPHONE
+        phone: participantInfo.phone
       });
       tickets.push(ticket);
     }
@@ -110,17 +110,26 @@ const BuyTickets = () => {
       ReferralSystem.validateReferral(participantInfo.email);
     }
 
-    // ✅ REDIRIGER VERS LA PAGE DE CONFIRMATION AVEC WHATSAPP
+    // 🚨 DEBUG CRITIQUE ICI 🚨
+    console.log('=== 🎯 DEBUG REDIRECTION ===');
+    console.log('Tickets générés:', tickets);
+    console.log('Participant info:', participantInfo);
+    
     const queryParams = new URLSearchParams({
       tickets: tickets.map(t => t.number).join(','),
       name: participantInfo.name,
       email: participantInfo.email,
-      phone: participantInfo.phone || '', // ✅ TRANSMETTRE LE TÉLÉPHONE
+      phone: participantInfo.phone || '',
       count: ticketCount,
       amount: ticketCount * 5
     });
 
-   window.location.assign(`#/confirmation?${queryParams.toString()}`);
+    const confirmationUrl = `#/confirmation?${queryParams.toString()}`;
+    console.log('🔗 URL COMPLÈTE:', confirmationUrl);
+    console.log('📋 Paramètres:', queryParams.toString());
+    
+    // ✅ REDIRECTION
+    window.location.assign(confirmationUrl);
   };
 
   return (
