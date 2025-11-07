@@ -8,45 +8,66 @@ const Confirmation = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simuler un chargement initial
-    setTimeout(() => {
-      // Récupérer les paramètres URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const ticketNumbers = urlParams.get('tickets')?.split(',') || [];
-      const participantName = urlParams.get('name') || 'Participant';
-      const participantPhone = urlParams.get('phone') || '';
-      const participantEmail = urlParams.get('email') || '';
-      
-      // Créer des objets tickets complets
-      const ticketsData = ticketNumbers.map((number, index) => ({
-        id: index + 1,
-        number: number,
-        purchaseDate: new Date().toISOString(),
-        participant: participantName,
-        email: participantEmail,
-        isDrawn: false,
-        drawResult: null
-      }));
+    console.log('=== 📋 DEBUG CONFIRMATION PAGE ===');
+    console.log('URL complète:', window.location.href);
+    console.log('Hash:', window.location.hash);
+    
+    // ✅ CORRECTION : Extraire les paramètres du HASH (#)
+    const hash = window.location.hash;
+    const queryString = hash.split('?')[1] || '';
+    const hashParams = new URLSearchParams(queryString);
+    
+    console.log('Paramètres hash extraits:', Array.from(hashParams.entries()));
+    
+    const ticketNumbers = hashParams.get('tickets')?.split(',') || [];
+    const participantName = hashParams.get('name') || 'Participant';
+    const participantPhone = hashParams.get('phone') || '';
+    const participantEmail = hashParams.get('email') || '';
+    const ticketCount = hashParams.get('count') || '1';
+    const amount = hashParams.get('amount') || '5';
+    
+    console.log('Données finales:', {
+      ticketNumbers,
+      participantName, 
+      participantPhone,
+      participantEmail,
+      ticketCount,
+      amount
+    });
 
-      setTickets(ticketsData);
-      setParticipantInfo({
-        name: participantName,
-        phone: participantPhone,
-        email: participantEmail
-      });
+    // Créer des objets tickets complets
+    const ticketsData = ticketNumbers.map((number, index) => ({
+      id: index + 1,
+      number: number,
+      purchaseDate: new Date().toISOString(),
+      participant: participantName,
+      email: participantEmail,
+      isDrawn: false,
+      drawResult: null
+    }));
 
-      // Générer les liens WhatsApp
-      if (participantPhone) {
-        const links = WhatsAppService.generateMessageLinks(
-          participantPhone,
-          participantName,
-          ticketNumbers
-        );
-        setWhatsappLinks(links);
-      }
+    setTickets(ticketsData);
+    setParticipantInfo({
+      name: participantName,
+      phone: participantPhone,
+      email: participantEmail,
+      count: ticketCount,
+      amount: amount
+    });
 
-      setLoading(false);
-    }, 1500);
+    // Générer les liens WhatsApp
+    if (participantPhone) {
+      const links = WhatsAppService.generateMessageLinks(
+        participantPhone,
+        participantName,
+        ticketNumbers,
+        parseInt(amount)
+      );
+      console.log('📱 Liens WhatsApp générés:', links);
+      setWhatsappLinks(links);
+    }
+
+    setLoading(false);
   }, []);
 
   const copyToClipboard = (text) => {
