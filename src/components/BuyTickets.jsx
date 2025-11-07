@@ -120,7 +120,7 @@ const BuyTickets = () => {
       amount: ticketCount * 5
     });
 
-    window.location.hash = `#/confirmation?${queryParams.toString()}`;
+   window.location.assign(`#/confirmation?${queryParams.toString()}`);
   };
 
   return (
