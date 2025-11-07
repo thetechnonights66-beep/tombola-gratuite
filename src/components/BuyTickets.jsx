@@ -189,7 +189,7 @@ const BuyTickets = () => {
             )}
           </div>
 
-          {/* ✅ CHAMP WHATSAPP AVEC VALIDATION EN TEMPS RÉEL */}
+          {/* ✅ CHAMP WHATSAPP AVEC VALIDATION EN TEMPS RÉEL AMÉLIORÉE */}
           <div className="mb-4">
             <label className="block text-sm font-medium mb-2">
               <span className="flex items-center gap-2">
@@ -213,15 +213,18 @@ const BuyTickets = () => {
               onBlur={() => validatePhone(participantInfo.phone)}
             />
             
-            {/* Instructions pour le format */}
+            {/* ✅ INSTRUCTIONS DÉTAILLÉES POUR TOUS LES TERRITOIRES */}
             <p className="text-xs text-gray-600 mt-2">
-              💡 <strong>Formats acceptés :</strong> +33 6 12 34 56 78 • 06 12 34 56 78 • 0612345678
+              💡 <strong>France métropolitaine :</strong> +33 6 12 34 56 78 • 06 12 34 56 78 • 0612345678
             </p>
             <p className="text-xs text-blue-600 mt-1">
-              🌍 <strong>International :</strong> +1 555 123 4567 • +44 7911 123456 • +49 151 12345678
+              🏝️ <strong>Outre-mer :</strong> +590 690 12 34 56 (Guadeloupe) • +596 696 12 34 56 (Martinique)
+            </p>
+            <p className="text-xs text-purple-600 mt-1">
+              🌍 <strong>International :</strong> +1 555 123 4567 (USA) • +44 7911 123456 (UK)
             </p>
             
-            {/* ✅ AFFICHER LA VALIDATION DU TÉLÉPHONE */}
+            {/* ✅ AFFICHER LA VALIDATION DÉTAILLÉE DU TÉLÉPHONE */}
             {phoneValidation.original && (
               <div className={`text-xs mt-2 p-2 rounded ${
                 phoneValidation.isValid 
@@ -229,22 +232,32 @@ const BuyTickets = () => {
                   : 'bg-red-100 text-red-700 border border-red-300'
               }`}>
                 {phoneValidation.isValid ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-600">✅</span>
-                    <div>
-                      <strong>Numéro valide</strong>
-                      <div className="text-green-600 text-xs">
-                        Formaté : {phoneValidation.formatted}
-                      </div>
+                  <div>
+                    <div className="font-semibold flex items-center gap-2">
+                      <span className="text-green-600">✅</span>
+                      <span><strong>Numéro valide</strong></span>
+                      {phoneValidation.isOverseas && (
+                        <span className="ml-2 text-blue-600 text-xs flex items-center gap-1">
+                          🏝️ {phoneValidation.territory}
+                        </span>
+                      )}
                     </div>
+                    <div className="mt-1 text-green-600">
+                      <strong>Formaté :</strong> {phoneValidation.formatted}
+                    </div>
+                    {phoneValidation.whatsappLink && (
+                      <div className="mt-1 text-xs text-green-600">
+                        <strong>Lien WhatsApp :</strong> Prêt à envoyer
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
                     <span className="text-red-600">❌</span>
                     <div>
                       <strong>Numéro invalide</strong>
-                      <div className="text-red-600 text-xs">
-                        Utilisez le format international
+                      <div className="text-red-600 text-xs mt-1">
+                        Utilisez le format international avec l'indicatif pays
                       </div>
                     </div>
                   </div>
@@ -394,6 +407,10 @@ const BuyTickets = () => {
             <li className="flex items-center gap-2">
               <span className="text-green-600">📞</span>
               Support prioritaire en cas de besoin
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-green-600">🌍</span>
+              Disponible dans tous les territoires français
             </li>
           </ul>
         </div>
