@@ -1,8 +1,245 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TicketStorage } from '../utils/ticketStorage';
-import { ReferralSystem } from '../utils/referralSystem'; // ✅ NOUVEAU IMPORT
+import { ReferralSystem } from '../utils/referralSystem';
 
-// ✅ COMPOSANT PANNEAU PARRAINAGE
+// ✅ COMPOSANT STATISTIQUES PERSONNELLES AVANCÉES
+const PersonalStats = ({ tickets, email }) => {
+  if (tickets.length === 0) return null;
+
+  const stats = {
+    totalTickets: tickets.length,
+    totalSpent: tickets.reduce((sum, t) => sum + t.price, 0),
+    drawnTickets: tickets.filter(t => t.isDrawn).length,
+    winningTickets: tickets.filter(t => t.isDrawn && t.drawResult?.includes('Gagnant')).length,
+    referralTickets: tickets.filter(t => t.source === 'referral_reward').length,
+    activeTickets: tickets.filter(t => !t.isDrawn).length,
+    lastPurchase: tickets.length > 0 ? new Date(tickets[tickets.length - 1].purchaseDate) : null
+  };
+
+  const winRate = stats.drawnTickets > 0 
+    ? ((stats.winningTickets / stats.drawnTickets) * 100).toFixed(1)
+    : 0;
+
+  const daysSinceLastPurchase = stats.lastPurchase 
+    ? Math.floor((new Date() - stats.lastPurchase) / (1000 * 60 * 60 * 24))
+    : null;
+
+  return (
+    <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl p-6 text-white mb-6 shadow-lg">
+      <h3 className="text-xl font-bold mb-4 text-center">📈 Mes Statistiques Personnelles</h3>
+      
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div className="text-center">
+          <div className="text-2xl font-bold">{stats.totalTickets}</div>
+          <div className="text-sm text-blue-100">Total Tickets</div>
+        </div>
+        <div className="text-center">
+          <div className="text-2xl font-bold">€{stats.totalSpent}</div>
+          <div className="text-sm text-blue-100">Total Dépensé</div>
+        </div>
+        <div className="text-center">
+          <div className="text-2xl font-bold">{stats.activeTickets}</div>
+          <div className="text-sm text-blue-100">Tickets Actifs</div>
+        </div>
+        <div className="text-center">
+          <div className="text-2xl font-bold">{winRate}%</div>
+          <div className="text-sm text-blue-100">Taux de Gain</div>
+        </div>
+      </div>
+
+      {/* Barres de progression */}
+      <div className="space-y-3">
+        <div>
+          <div className="flex justify-between text-sm mb-1">
+            <span>Progression des tirages</span>
+            <span>{stats.drawnTickets}/{stats.totalTickets}</span>
+          </div>
+          <div className="w-full bg-white/20 rounded-full h-2">
+            <div 
+              className="bg-green-400 h-2 rounded-full transition-all duration-500"
+              style={{ width: `${(stats.drawnTickets / stats.totalTickets) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+        
+        <div>
+          <div className="flex justify-between text-sm mb-1">
+            <span>Tickets gagnants</span>
+            <span>{stats.winningTickets}/{stats.drawnTickets || 0}</span>
+          </div>
+          <div className="w-full bg-white/20 rounded-full h-2">
+            <div 
+              className="bg-yellow-400 h-2 rounded-full transition-all duration-500"
+              style={{ width: `${stats.drawnTickets > 0 ? (stats.winningTickets / stats.drawnTickets) * 100 : 0}%` }}
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Informations supplémentaires */}
+      <div className="grid grid-cols-2 gap-4 mt-4 text-center">
+        <div className="bg-white/10 rounded-lg p-2">
+          <div className="text-sm text-blue-200">Tickets Offerts</div>
+          <div className="font-bold text-yellow-300">{stats.referralTickets}</div>
+        </div>
+        <div className="bg-white/10 rounded-lg p-2">
+          <div className="text-sm text-blue-200">Dernier achat</div>
+          <div className="font-bold text-sm">
+            {daysSinceLastPurchase !== null 
+              ? daysSinceLastPurchase === 0 
+                ? "Aujourd'hui" 
+                : `Il y a ${daysSinceLastPurchase} jour(s)`
+              : "Aucun"
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ✅ COMPOSANT ESTIMATION DES CHANCES DE GAIN
+const ChanceCalculator = ({ tickets }) => {
+  const allTickets = TicketStorage.getTickets();
+  const activeTickets = tickets.filter(t => !t.isDrawn);
+  const totalActiveTickets = allTickets.filter(t => !t.isDrawn).length;
+  
+  if (activeTickets.length === 0) return null;
+
+  const chancePerTicket = totalActiveTickets > 0 ? (1 / totalActiveTickets * 100) : 0;
+  const totalChance = Math.min(chancePerTicket * activeTickets.length, 100);
+  const nextDrawTickets = Math.min(5, totalActiveTickets); // Prochain tirage = 5 gagnants
+
+  return (
+    <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-6 text-white mb-6 shadow-lg">
+      <h3 className="text-xl font-bold mb-4 text-center">🎯 Estimation de vos chances</h3>
+      
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4 text-center">
+          <div className="bg-white/10 rounded-lg p-3">
+            <div className="text-2xl font-bold">{activeTickets.length}</div>
+            <div className="text-sm text-green-100">Vos tickets actifs</div>
+          </div>
+          <div className="bg-white/10 rounded-lg p-3">
+            <div className="text-2xl font-bold">{totalActiveTickets}</div>
+            <div className="text-sm text-green-100">Total en jeu</div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Chance par ticket:</span>
+            <span className="font-bold">{chancePerTicket.toFixed(3)}%</span>
+          </div>
+          <div className="flex justify-between text-lg font-bold border-t border-white/20 pt-2">
+            <span>Chance totale estimée:</span>
+            <span className="text-yellow-300">{totalChance.toFixed(2)}%</span>
+          </div>
+        </div>
+        
+        {/* Barre de chance visuelle */}
+        <div className="mt-4">
+          <div className="flex justify-between text-sm mb-1">
+            <span>Faible</span>
+            <span>Élevée</span>
+          </div>
+          <div className="w-full bg-white/20 rounded-full h-3">
+            <div 
+              className="bg-gradient-to-r from-red-400 via-yellow-400 to-green-400 h-3 rounded-full transition-all duration-1000"
+              style={{ width: `${totalChance}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Conseils personnalisés */}
+        <div className="mt-4 p-3 bg-white/10 rounded-lg border border-white/20">
+          <p className="text-sm text-center font-semibold">
+            {totalChance < 10 
+              ? "💡 Augmentez vos chances en achetant plus de tickets !"
+              : totalChance < 30
+              ? "🎯 Bonnes chances ! Vous êtes bien positionné."
+              : totalChance < 60
+              ? "🌟 Très bonnes chances ! Continuez comme ça."
+              : "🏆 Excellentes chances ! Vous êtes parmi les favoris !"
+            }
+          </p>
+          {totalChance < 20 && (
+            <p className="text-xs text-center mt-2 text-green-200">
+              Chaque ticket supplémentaire augmente significativement vos chances !
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ✅ COMPOSANT RAPPEL DE TIRAGE INTELLIGENT
+const DrawReminder = ({ tickets }) => {
+  const nextDrawDate = new Date('2024-12-25T20:00:00'); // Tirage de Noël à 20h
+  const today = new Date();
+  const timeUntilDraw = nextDrawDate - today;
+  const daysUntilDraw = Math.ceil(timeUntilDraw / (1000 * 60 * 60 * 24));
+  const hoursUntilDraw = Math.ceil((timeUntilDraw % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  
+  const activeTickets = tickets.filter(t => !t.isDrawn).length;
+
+  if (activeTickets === 0) return null;
+
+  const isDrawToday = daysUntilDraw === 0;
+  const isDrawImminent = daysUntilDraw <= 1;
+
+  return (
+    <div className={`rounded-xl p-4 text-white mb-6 shadow-lg ${
+      isDrawImminent 
+        ? 'bg-gradient-to-r from-red-500 to-orange-500 animate-pulse' 
+        : 'bg-gradient-to-r from-orange-500 to-amber-500'
+    }`}>
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex-1">
+          <h4 className="font-bold text-lg flex items-center gap-2">
+            ⏰ {isDrawToday ? "TIRAGE AUJOURD'HUI !" : "Prochain tirage"}
+          </h4>
+          <p className="text-sm mt-1">
+            {isDrawToday 
+              ? `À ${hoursUntilDraw}h - ${activeTickets} ticket(s) en jeu !`
+              : `Dans ${daysUntilDraw} jour(s) - ${activeTickets} ticket(s) actifs`
+            }
+          </p>
+          {isDrawImminent && (
+            <p className="text-xs mt-2 text-orange-100 font-semibold">
+              🚀 Ne manquez pas le tirage en direct !
+            </p>
+          )}
+        </div>
+        <button 
+          onClick={() => window.location.hash = '#/live'}
+          className="bg-white text-orange-600 px-4 py-2 rounded-lg font-bold hover:bg-orange-50 transition transform hover:scale-105 shadow-lg whitespace-nowrap"
+        >
+          {isDrawToday ? "📺 REGARDER LE LIVE" : "📅 VOIR LE DIRECT"}
+        </button>
+      </div>
+
+      {/* Compte à rebours visuel pour le jour J */}
+      {isDrawToday && (
+        <div className="mt-3 pt-3 border-t border-white/20">
+          <div className="flex justify-around text-center">
+            <div>
+              <div className="text-xl font-bold">{hoursUntilDraw}</div>
+              <div className="text-xs text-orange-100">Heures</div>
+            </div>
+            <div>
+              <div className="text-xl font-bold">{Math.ceil((timeUntilDraw % (1000 * 60 * 60)) / (1000 * 60))}</div>
+              <div className="text-xs text-orange-100">Minutes</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ✅ COMPOSANT PANNEAU PARRAINAGE (EXISTANT - CONSERVÉ)
 const ReferralPanel = ({ participant }) => {
   const [referralStats, setReferralStats] = useState({
     code: '',
@@ -164,11 +401,11 @@ ${window.location.origin}${window.location.pathname}
   );
 };
 
-// ✅ COMPOSANT PRINCIPAL MyTickets
+// ✅ COMPOSANT PRINCIPAL MyTickets AMÉLIORÉ
 const MyTickets = () => {
   const [tickets, setTickets] = useState([]);
   const [email, setEmail] = useState('');
-  const [currentParticipant, setCurrentParticipant] = useState(null); // ✅ NOUVEAU STATE
+  const [currentParticipant, setCurrentParticipant] = useState(null);
 
   const searchTickets = () => {
     if (email) {
@@ -187,16 +424,35 @@ const MyTickets = () => {
     }
   };
 
+  // ✅ RECHERCHE AUTOMATIQUE SI EMAIL DANS URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const emailFromUrl = urlParams.get('email');
+    if (emailFromUrl) {
+      setEmail(emailFromUrl);
+      setTimeout(() => {
+        const participantTickets = TicketStorage.getParticipantTickets(emailFromUrl);
+        setTickets(participantTickets);
+        if (participantTickets.length > 0) {
+          setCurrentParticipant({
+            name: participantTickets[0].participant,
+            email: emailFromUrl
+          });
+        }
+      }, 100);
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-6xl mx-auto px-4">
         {/* ✅ LAYOUT AVEC GRID POUR LE PARRAINAGE */}
         <div className="grid md:grid-cols-3 gap-8">
           
-          {/* ✅ COLONNE PRINCIPALE - TICKETS */}
+          {/* ✅ COLONNE PRINCIPALE - TICKETS ET STATISTIQUES */}
           <div className="md:col-span-2">
             <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-              <h1 className="text-3xl font-bold text-center mb-6">🎫 Mes Tickets</h1>
+              <h1 className="text-3xl font-bold text-center mb-6">🎫 Mes Tickets & Statistiques</h1>
               
               <div className="max-w-md mx-auto mb-6">
                 <label className="block text-sm font-medium mb-2">
@@ -206,14 +462,14 @@ const MyTickets = () => {
                   <input
                     type="email"
                     placeholder="votre@email.com"
-                    className="flex-1 p-3 border rounded-lg"
+                    className="flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && searchTickets()}
                   />
                   <button
                     onClick={searchTickets}
-                    className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600"
+                    className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition font-semibold"
                   >
                     Rechercher
                   </button>
@@ -222,6 +478,11 @@ const MyTickets = () => {
 
               {tickets.length > 0 && (
                 <div>
+                  {/* ✅ AJOUT DES NOUVELLES FONCTIONNALITÉS */}
+                  <PersonalStats tickets={tickets} email={email} />
+                  <ChanceCalculator tickets={tickets} />
+                  <DrawReminder tickets={tickets} />
+                  
                   <div className="mb-4 text-center">
                     <p className="text-lg font-semibold">
                       {tickets.length} ticket(s) trouvé(s) pour <strong>{email}</strong>
@@ -233,28 +494,41 @@ const MyTickets = () => {
                   
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                     {tickets.map(ticket => (
-                      <div key={ticket.id} className={`border rounded-lg p-4 ${
-                        ticket.isDrawn ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'
+                      <div key={ticket.id} className={`border-2 rounded-lg p-4 transition-all duration-300 hover:scale-105 ${
+                        ticket.isDrawn 
+                          ? ticket.drawResult?.includes('Gagnant')
+                            ? 'bg-gradient-to-br from-green-50 to-emerald-100 border-green-300 shadow-lg'
+                            : 'bg-gray-50 border-gray-200'
+                          : 'bg-gradient-to-br from-blue-50 to-cyan-100 border-blue-300 shadow-md hover:shadow-lg'
                       }`}>
                         <div className="text-center">
                           <div className="text-3xl mb-2">🎫</div>
-                          <div className="text-2xl font-bold text-gray-800">#{ticket.number}</div>
+                          <div className="text-2xl font-bold text-gray-800 font-mono">#{ticket.number}</div>
                           <div className="text-sm text-gray-600 mt-1">
                             Acheté le {new Date(ticket.purchaseDate).toLocaleDateString()}
                           </div>
                           <div className="text-sm text-gray-500">Par {ticket.participant}</div>
                           <div className={`text-sm font-semibold mt-2 ${
-                            ticket.isDrawn ? 'text-green-600' : 'text-blue-600'
+                            ticket.isDrawn 
+                              ? ticket.drawResult?.includes('Gagnant')
+                                ? 'text-green-600 bg-green-100 px-2 py-1 rounded-full'
+                                : 'text-gray-600'
+                              : 'text-blue-600 bg-blue-100 px-2 py-1 rounded-full animate-pulse'
                           }`}>
-                            {ticket.isDrawn ? '✅ Tiré le ' + new Date(ticket.drawDate).toLocaleDateString() : '⏳ En attente'}
+                            {ticket.isDrawn 
+                              ? ticket.drawResult?.includes('Gagnant')
+                                ? '🎉 GAGNANT !'
+                                : '✅ Tiré le ' + new Date(ticket.drawDate).toLocaleDateString()
+                              : '⏳ En attente du tirage'
+                            }
                           </div>
-                          {ticket.drawResult && (
+                          {ticket.drawResult && !ticket.drawResult.includes('Gagnant') && (
                             <div className="text-xs text-gray-500 mt-1">
                               {ticket.drawResult}
                             </div>
                           )}
                           {ticket.source === 'referral_reward' && (
-                            <div className="text-xs text-purple-600 font-semibold mt-1">
+                            <div className="text-xs text-purple-600 font-semibold mt-1 bg-purple-100 px-2 py-1 rounded-full">
                               🎁 Ticket offert - Parrainage
                             </div>
                           )}
@@ -263,8 +537,15 @@ const MyTickets = () => {
                     ))}
                   </div>
                   
-                  <div className="text-center text-gray-600">
-                    {tickets.filter(t => t.isDrawn).length} / {tickets.length} tickets tirés
+                  <div className="text-center text-gray-600 bg-gray-100 py-2 rounded-lg">
+                    <span className="font-semibold">
+                      {tickets.filter(t => t.isDrawn).length} / {tickets.length} tickets tirés
+                    </span>
+                    {tickets.filter(t => !t.isDrawn).length > 0 && (
+                      <span className="ml-4 text-blue-600">
+                        • {tickets.filter(t => !t.isDrawn).length} en attente du tirage
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
@@ -272,19 +553,25 @@ const MyTickets = () => {
               {tickets.length === 0 && email && (
                 <div className="text-center text-gray-500 py-8">
                   <div className="text-4xl mb-4">📭</div>
-                  <p>Aucun ticket trouvé pour cet email</p>
+                  <p className="text-lg">Aucun ticket trouvé pour cet email</p>
                   <p className="text-sm mt-2">
                     Vérifiez l'email ou achetez vos premiers tickets !
                   </p>
+                  <button
+                    onClick={() => window.location.hash = '#/buy'}
+                    className="mt-4 bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition font-semibold"
+                  >
+                    🎫 Acheter mes premiers tickets
+                  </button>
                 </div>
               )}
 
               {!email && (
                 <div className="text-center text-gray-500 py-8">
                   <div className="text-4xl mb-4">🔍</div>
-                  <p>Entrez votre email pour voir vos tickets</p>
+                  <p className="text-lg">Entrez votre email pour voir vos tickets</p>
                   <p className="text-sm mt-2">
-                    Vous pourrez également accéder à votre espace parrainage
+                    Vous découvrirez vos statistiques personnelles, vos chances de gain et pourrez accéder à votre espace parrainage
                   </p>
                 </div>
               )}
