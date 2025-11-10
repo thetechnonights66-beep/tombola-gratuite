@@ -1,19 +1,75 @@
 import React, { useState, useEffect } from 'react';
 import { AnalyticsService } from '../utils/analyticsService';
+import { Auth } from '../utils/auth'; // ✅ IMPORT DE L'AUTH
 
 const AnalyticsDashboard = () => {
   const [report, setReport] = useState(null);
   const [timeRange, setTimeRange] = useState('all');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // ✅ VÉRIFICATION D'ACCÈS ADMIN
   useEffect(() => {
-    loadAnalytics();
-  }, [timeRange]);
+    const checkAccess = () => {
+      if (!Auth.isAuthenticated()) {
+        // Rediriger vers la page de login admin
+        window.location.hash = '#/admin-login';
+        return;
+      }
+      
+      // ✅ VÉRIFICATION SUPPLÉMENTAIRE - SEUL L'ADMIN PRINCIPAL A ACCÈS
+      const adminUser = Auth.getCurrentUser();
+      if (adminUser && adminUser.email === 'votre-email@admin.com') { // ⚠️ REMPLACEZ PAR VOTRE EMAIL
+        setIsAuthenticated(true);
+        loadAnalytics();
+      } else {
+        // Accès refusé - Rediriger vers l'admin panel normal
+        alert('❌ Accès réservé à l\'administrateur principal');
+        window.location.hash = '#/admin';
+      }
+      setIsLoading(false);
+    };
+
+    checkAccess();
+  }, []);
 
   const loadAnalytics = () => {
     const analyticsReport = AnalyticsService.generateReport();
     setReport(analyticsReport);
   };
 
+  // ✅ ÉCRAN DE CHARGEMENT
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto"></div>
+          <p className="mt-4">Vérification des accès...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ ACCÈS REFUSÉ
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="text-6xl mb-4">🔒</div>
+          <h1 className="text-2xl font-bold mb-4">Accès Refusé</h1>
+          <p className="text-gray-400">Cette page est réservée à l'administrateur principal.</p>
+          <button
+            onClick={() => window.location.hash = '#/admin'}
+            className="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg"
+          >
+            Retour au Panel Admin
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ CHARGEMENT DES DONNÉES ANALYTICS
   if (!report) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -28,21 +84,29 @@ const AnalyticsDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-7xl mx-auto">
-        {/* En-tête */}
+        {/* En-tête avec bouton retour */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold">📊 Tableau de Bord Analytics</h1>
             <p className="text-gray-400 mt-2">Statistiques avancées de votre tombola</p>
           </div>
-          <select 
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
-          >
-            <option value="all">Depuis le début</option>
-            <option value="7days">7 derniers jours</option>
-            <option value="30days">30 derniers jours</option>
-          </select>
+          <div className="flex gap-4 items-center">
+            <select 
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+            >
+              <option value="all">Depuis le début</option>
+              <option value="7days">7 derniers jours</option>
+              <option value="30days">30 derniers jours</option>
+            </select>
+            <button
+              onClick={() => window.location.hash = '#/admin'}
+              className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition"
+            >
+              ← Retour Admin
+            </button>
+          </div>
         </div>
 
         {/* 📈 RÉSUMÉ PRINCIPAL */}
