@@ -5,7 +5,7 @@ import { TicketStorage } from '../utils/ticketStorage';
 import { ParticipantHistory } from '../utils/participantHistory';
 import { EmailVerification } from '../utils/emailVerification';
 import { EventSystem } from '../utils/eventSystem';
-import { WhatsAppService } from '../utils/whatsappService'; // ✅ AJOUT IMPORT WHATSAPP
+import { WhatsAppService } from '../utils/whatsappService';
 
 const AdminPanel = () => {
   const [participants, setParticipants] = useState([]);
@@ -134,6 +134,18 @@ const AdminPanel = () => {
           window.open(whatsappLink, '_blank');
         }
       }, 1000);
+    }
+  };
+
+  // ✅ FONCTION POUR ACCÉDER AUX ANALYTICS AVANCÉS
+  const handleAnalyticsAccess = () => {
+    // ✅ VÉRIFICATION SUPPLÉMENTAIRE POUR L'ACCÈS ANALYTICS
+    const currentUser = Auth.getCurrentUser();
+    if (currentUser && currentUser.email === 'votre-email@admin.com') { // ⚠️ REMPLACEZ PAR VOTRE EMAIL
+      window.location.hash = '#/analytics';
+    } else {
+      alert('🔒 Accès réservé à l\'administrateur principal');
+      console.log('❌ Tentative d\'accès analytics refusée pour:', currentUser?.email);
     }
   };
 
@@ -433,6 +445,13 @@ const AdminPanel = () => {
               className="bg-pink-500 hover:bg-pink-600 px-4 py-2 rounded-lg font-semibold"
             >
               🎁 Gérer Lots
+            </button>
+            {/* ✅ BOUTON ANALYTICS AVANCÉS SÉCURISÉ */}
+            <button
+              onClick={handleAnalyticsAccess}
+              className="bg-teal-500 hover:bg-teal-600 px-4 py-2 rounded-lg font-semibold"
+            >
+              📊 Analytics Avancés
             </button>
             <button
               onClick={resetDraw}
