@@ -3,7 +3,7 @@ import { Auth } from '../utils/auth';
 
 // ✅ LISTE BLANCHE DES ADMINISTRATEURS AUTORISÉS
 const AUTHORIZED_ADMINS = [
-  'votre-email@admin.com', // ⚠️ REMPLACEZ PAR VOTRE EMAIL
+  'thetechnonights66@gmail.com', // ⚠️ REMPLACEZ PAR VOTRE EMAIL
   'admin@tombola.com'      // ⚠️ AJOUTEZ D'AUTRES EMAILS SI NÉCESSAIRE
 ];
 
