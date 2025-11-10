@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { WhatsAppService } from '../utils/whatsappService';
+import { AnalyticsService } from '../utils/analyticsService';
 
 const Confirmation = () => {
   const [tickets, setTickets] = useState([]);
@@ -8,6 +9,8 @@ const Confirmation = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    AnalyticsService.trackPageView('confirmation');
+    
     console.log('=== 📋 DEBUG CONFIRMATION PAGE ===');
     console.log('URL complète:', window.location.href);
     console.log('Hash:', window.location.hash);
