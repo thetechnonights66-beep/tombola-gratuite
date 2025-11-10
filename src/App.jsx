@@ -9,7 +9,8 @@ import AdminLogin from './components/AdminLogin';
 import LiveDraw from './components/LiveDraw';
 import PrizeManager from './components/PrizeManager';
 import ReferralAdminPanel from './components/ReferralAdminPanel';
-import { AnalyticsService } from './utils/analyticsService'; // ✅ IMPORT ANALYTICS
+import AnalyticsDashboard from './components/AnalyticsDashboard'; // ✅ IMPORT ANALYTICS DASHBOARD
+import { AnalyticsService } from './utils/analyticsService';
 
 function App() {
   // ✅ INITIALISATION ANALYTICS AU DÉMARRAGE
@@ -84,6 +85,7 @@ function App() {
           <Route path="/live" element={<LiveDraw />} />
           <Route path="/prize-manager" element={<PrizeManager />} />
           <Route path="/referral-admin" element={<ReferralAdminPanel />} />
+          <Route path="/analytics" element={<AnalyticsDashboard />} /> {/* ✅ NOUVELLE ROUTE ANALYTICS */}
         </Routes>
 
         {/* ✅ FOOTER AVEC LIENS ANALYTICS */}
@@ -141,6 +143,14 @@ function App() {
                   >
                     Tirage en direct
                   </a>
+                  {/* ✅ LIEN DIRECT VERS ANALYTICS POUR LES ADMINS */}
+                  <a 
+                    href="#/analytics" 
+                    className="block text-teal-400 hover:text-teal-300 transition-colors font-semibold"
+                    onClick={() => AnalyticsService.trackEvent('footer', 'click', 'analytics_dashboard')}
+                  >
+                    📊 Dashboard Analytics
+                  </a>
                 </div>
               </div>
               
@@ -153,7 +163,8 @@ function App() {
                   <button 
                     onClick={() => {
                       AnalyticsService.trackEvent('analytics', 'click', 'view_stats');
-                      AnalyticsService.showAnalyticsDashboard();
+                      // ✅ REDIRECTION VERS LE DASHBOARD ANALYTICS
+                      window.location.hash = '#/analytics';
                     }}
                     className="mt-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition-colors"
                   >
@@ -169,6 +180,15 @@ function App() {
                   `Session #${AnalyticsService.getCurrentSessionId().substring(0, 8)}` : 
                   'Analytics activés'
                 }
+              </p>
+              <p className="mt-1 text-xs">
+                <a 
+                  href="#/analytics" 
+                  className="text-teal-400 hover:text-teal-300"
+                  onClick={() => AnalyticsService.trackEvent('footer', 'click', 'analytics_link')}
+                >
+                  📊 Accéder aux statistiques avancées
+                </a>
               </p>
             </div>
           </div>
