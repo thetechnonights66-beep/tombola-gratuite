@@ -19,7 +19,7 @@ const AnalyticsDashboard = () => {
       
       // ✅ VÉRIFICATION SUPPLÉMENTAIRE - SEUL L'ADMIN PRINCIPAL A ACCÈS
       const adminUser = Auth.getCurrentUser();
-      if (adminUser && adminUser.email === 'votre-email@admin.com') { // ⚠️ REMPLACEZ PAR VOTRE EMAIL
+      if (adminUser && adminUser.email === 'thetechnonights66@gmail.com') { // ⚠️ REMPLACEZ PAR VOTRE EMAIL
         setIsAuthenticated(true);
         loadAnalytics();
       } else {
