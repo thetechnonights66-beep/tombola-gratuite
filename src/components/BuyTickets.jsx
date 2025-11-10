@@ -3,6 +3,7 @@ import { TicketStorage } from '../utils/ticketStorage';
 import { EmailVerification } from '../utils/emailVerification';
 import { ReferralSystem } from '../utils/referralSystem';
 import { WhatsAppService } from '../utils/whatsappService';
+import { AnalyticsService } from '../utils/analyticsService'; // ✅ IMPORT ANALYTICS
 
 const BuyTickets = () => {
   const [ticketCount, setTicketCount] = useState(1);
@@ -110,6 +111,17 @@ const BuyTickets = () => {
       ReferralSystem.validateReferral(participantInfo.email);
     }
 
+    // 📈 TRACKING ANALYTICS POUR L'ACHAT
+    AnalyticsService.trackPurchase({
+      amount: ticketCount * 5,
+      ticketCount,
+      participant: participantInfo.name,
+      email: participantInfo.email,
+      referralCode: referralResult?.success ? referralCode : null,
+      phone: participantInfo.phone || null,
+      paymentMethod: paymentMethod
+    });
+
     // 🚨 DEBUG CRITIQUE ICI 🚨
     console.log('=== 🎯 DEBUG REDIRECTION ===');
     console.log('Tickets générés:', tickets);
@@ -132,6 +144,16 @@ const BuyTickets = () => {
     window.location.assign(confirmationUrl);
   };
 
+  // ✅ TRACKING DES INTERACTIONS UTILISATEUR
+  const trackInteraction = (action, element) => {
+    AnalyticsService.trackEvent('user_interaction', action, element, {
+      page: 'buy_tickets',
+      ticketCount,
+      hasEmail: !!participantInfo.email,
+      hasPhone: !!participantInfo.phone
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
@@ -147,7 +169,13 @@ const BuyTickets = () => {
             placeholder="Votre nom complet"
             className="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             value={participantInfo.name}
-            onChange={(e) => setParticipantInfo({...participantInfo, name: e.target.value})}
+            onChange={(e) => {
+              setParticipantInfo({...participantInfo, name: e.target.value});
+              if (e.target.value.length > 0) {
+                trackInteraction('input_focus', 'name_field');
+              }
+            }}
+            onFocus={() => trackInteraction('field_focus', 'name_field')}
           />
           
           {/* Email avec validation visuelle */}
@@ -166,7 +194,11 @@ const BuyTickets = () => {
               onChange={(e) => {
                 setParticipantInfo({...participantInfo, email: e.target.value});
                 validateEmail(e.target.value);
+                if (e.target.value.length > 0) {
+                  trackInteraction('input_focus', 'email_field');
+                }
               }}
+              onFocus={() => trackInteraction('field_focus', 'email_field')}
               onBlur={() => validateEmail(participantInfo.email)}
             />
             
@@ -218,7 +250,11 @@ const BuyTickets = () => {
               onChange={(e) => {
                 setParticipantInfo({...participantInfo, phone: e.target.value});
                 validatePhone(e.target.value);
+                if (e.target.value.length > 0) {
+                  trackInteraction('input_focus', 'phone_field');
+                }
               }}
+              onFocus={() => trackInteraction('field_focus', 'phone_field')}
               onBlur={() => validatePhone(participantInfo.phone)}
             />
             
@@ -289,7 +325,13 @@ const BuyTickets = () => {
             placeholder="Ex: TOMBO-MARIE-ABC123"
             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
             value={referralCode}
-            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+            onChange={(e) => {
+              setReferralCode(e.target.value.toUpperCase());
+              if (e.target.value.length > 0) {
+                trackInteraction('input_focus', 'referral_field');
+              }
+            }}
+            onFocus={() => trackInteraction('field_focus', 'referral_field')}
           />
           <p className="text-xs text-gray-600 mt-2">
             💡 <strong>Comment ça marche ?</strong> Si un ami vous a donné son code, saisissez-le ici. 
@@ -323,7 +365,10 @@ const BuyTickets = () => {
             {[1, 3, 5, 10].map((count) => (
               <button
                 key={count}
-                onClick={() => setTicketCount(count)}
+                onClick={() => {
+                  setTicketCount(count);
+                  trackInteraction('ticket_selection', `select_${count}_tickets`);
+                }}
                 className={`flex-1 py-2 rounded-lg font-semibold transition-all duration-200 ${
                   ticketCount === count
                     ? 'bg-purple-500 text-white shadow-md'
@@ -349,7 +394,10 @@ const BuyTickets = () => {
                 name="payment"
                 value="card"
                 checked={paymentMethod === 'card'}
-                onChange={(e) => setPaymentMethod(e.target.value)}
+                onChange={(e) => {
+                  setPaymentMethod(e.target.value);
+                  trackInteraction('payment_selection', 'credit_card');
+                }}
                 className="text-purple-500 focus:ring-purple-500"
               />
               <span>Carte bancaire</span>
@@ -360,7 +408,10 @@ const BuyTickets = () => {
                 name="payment"
                 value="paypal"
                 checked={paymentMethod === 'paypal'}
-                onChange={(e) => setPaymentMethod(e.target.value)}
+                onChange={(e) => {
+                  setPaymentMethod(e.target.value);
+                  trackInteraction('payment_selection', 'paypal');
+                }}
                 className="text-purple-500 focus:ring-purple-500"
               />
               <span>PayPal</span>
@@ -370,7 +421,10 @@ const BuyTickets = () => {
 
         {/* Bouton de paiement */}
         <button 
-          onClick={handlePurchase}
+          onClick={() => {
+            handlePurchase();
+            trackInteraction('purchase_attempt', 'buy_button');
+          }}
           disabled={!participantInfo.name || !participantInfo.email || emailValidation.status === 'faible'}
           className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 ${
             (!participantInfo.name || !participantInfo.email || emailValidation.status === 'faible')
