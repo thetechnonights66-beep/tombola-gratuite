@@ -137,15 +137,15 @@ const AdminPanel = () => {
     }
   };
 
-  // ✅ FONCTION POUR ACCÉDER AUX ANALYTICS AVANCÉS
+  // ✅ FONCTION POUR ACCÉDER AUX ANALYTICS AVANCÉS - VERSION CORRIGÉE
   const handleAnalyticsAccess = () => {
-    // ✅ VÉRIFICATION SUPPLÉMENTAIRE POUR L'ACCÈS ANALYTICS
+    // ✅ CORRECTION : AUTORISER TOUS LES ADMINS AUTHENTIFIÉS
     const currentUser = Auth.getCurrentUser();
-    if (currentUser && currentUser.email === 'votre-email@admin.com') { // ⚠️ REMPLACEZ PAR VOTRE EMAIL
+    if (currentUser) {
       window.location.hash = '#/analytics';
     } else {
-      alert('🔒 Accès réservé à l\'administrateur principal');
-      console.log('❌ Tentative d\'accès analytics refusée pour:', currentUser?.email);
+      alert('❌ Vous devez être connecté en tant qu\'administrateur');
+      window.location.hash = '#/admin-login';
     }
   };
 
@@ -446,7 +446,7 @@ const AdminPanel = () => {
             >
               🎁 Gérer Lots
             </button>
-            {/* ✅ BOUTON ANALYTICS AVANCÉS SÉCURISÉ */}
+            {/* ✅ BOUTON ANALYTICS AVANCÉS CORRIGÉ */}
             <button
               onClick={handleAnalyticsAccess}
               className="bg-teal-500 hover:bg-teal-600 px-4 py-2 rounded-lg font-semibold"
