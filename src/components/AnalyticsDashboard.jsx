@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnalyticsService } from '../utils/analyticsService';
-import { Auth } from '../utils/auth'; // ✅ IMPORT DE L'AUTH
+import { Auth } from '../utils/auth';
 
 const AnalyticsDashboard = () => {
   const [report, setReport] = useState(null);
@@ -8,24 +8,22 @@ const AnalyticsDashboard = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ✅ VÉRIFICATION D'ACCÈS ADMIN
+  // ✅ VÉRIFICATION D'ACCÈS ADMIN - VERSION CORRIGÉE
   useEffect(() => {
     const checkAccess = () => {
       if (!Auth.isAuthenticated()) {
-        // Rediriger vers la page de login admin
         window.location.hash = '#/admin-login';
         return;
       }
       
-      // ✅ VÉRIFICATION SUPPLÉMENTAIRE - SEUL L'ADMIN PRINCIPAL A ACCÈS
+      // ✅ CORRECTION : AUTORISER TOUS LES ADMINS AUTHENTIFIÉS
       const adminUser = Auth.getCurrentUser();
-      if (adminUser && adminUser.email === 'thetechnonights66@gmail.com') { // ⚠️ REMPLACEZ PAR VOTRE EMAIL
+      if (adminUser) {
         setIsAuthenticated(true);
         loadAnalytics();
       } else {
-        // Accès refusé - Rediriger vers l'admin panel normal
-        alert('❌ Accès réservé à l\'administrateur principal');
-        window.location.hash = '#/admin';
+        alert('❌ Vous devez être connecté en tant qu\'administrateur');
+        window.location.hash = '#/admin-login';
       }
       setIsLoading(false);
     };
@@ -50,17 +48,23 @@ const AnalyticsDashboard = () => {
     );
   }
 
-  // ✅ ACCÈS REFUSÉ
+  // ✅ ACCÈS REFUSÉ - MESSAGE AMÉLIORÉ
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-white text-center">
           <div className="text-6xl mb-4">🔒</div>
           <h1 className="text-2xl font-bold mb-4">Accès Refusé</h1>
-          <p className="text-gray-400">Cette page est réservée à l'administrateur principal.</p>
+          <p className="text-gray-400 mb-4">Vous devez être connecté en tant qu'administrateur.</p>
+          <button
+            onClick={() => window.location.hash = '#/admin-login'}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg mr-4"
+          >
+            Se connecter
+          </button>
           <button
             onClick={() => window.location.hash = '#/admin'}
-            className="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg"
+            className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg"
           >
             Retour au Panel Admin
           </button>
