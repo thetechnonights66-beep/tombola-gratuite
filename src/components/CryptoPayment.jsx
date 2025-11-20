@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CryptoPaymentService } from '../utils/cryptoPaymentService';
 
 const CryptoPayment = ({ ticketCount, participantInfo, onPaymentSuccess, onCancel }) => {
@@ -6,13 +6,22 @@ const CryptoPayment = ({ ticketCount, participantInfo, onPaymentSuccess, onCance
   const [paymentDetails, setPaymentDetails] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState('idle');
-  const [countdown, setCountdown] = useState(1800); // 30 minutes en secondes
+  const [verificationStatus, setVerificationStatus] = useState(null);
+  const [countdown, setCountdown] = useState(1800);
+  const [autoVerify, setAutoVerify] = useState(true);
+  
+  const verificationIntervalRef = useRef(null);
 
-  const amount = ticketCount * 5; // 5€ par ticket
+  const amount = ticketCount * 5;
 
   useEffect(() => {
-    // Nettoyer les paiements expirés au chargement
     CryptoPaymentService.cleanupExpiredPayments();
+    return () => {
+      // Nettoyer l'intervalle de vérification
+      if (verificationIntervalRef.current) {
+        clearInterval(verificationIntervalRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -21,18 +30,55 @@ const CryptoPayment = ({ ticketCount, participantInfo, onPaymentSuccess, onCance
       timer = setInterval(() => {
         setCountdown(prev => prev - 1);
       }, 1000);
+    } else if (countdown === 0) {
+      handlePaymentExpired();
     }
     return () => clearInterval(timer);
   }, [paymentDetails, countdown]);
+
+  // Démarrer la vérification automatique
+  useEffect(() => {
+    if (paymentDetails && autoVerify && paymentStatus === 'waiting') {
+      startAutoVerification();
+    }
+    
+    return () => {
+      if (verificationIntervalRef.current) {
+        clearInterval(verificationIntervalRef.current);
+      }
+    };
+  }, [paymentDetails, autoVerify, paymentStatus]);
+
+  const startAutoVerification = () => {
+    if (verificationIntervalRef.current) {
+      clearInterval(verificationIntervalRef.current);
+    }
+
+    verificationIntervalRef.current = CryptoPaymentService.startAutoVerification(
+      paymentDetails.paymentId,
+      (result) => {
+        setVerificationStatus(result);
+        
+        if (result.status === 'confirmed') {
+          setPaymentStatus('confirmed');
+          onPaymentSuccess(paymentDetails.paymentId);
+        }
+      },
+      15000 // Vérifier toutes les 15 secondes
+    );
+  };
+
+  const handlePaymentExpired = () => {
+    setPaymentStatus('expired');
+    if (verificationIntervalRef.current) {
+      clearInterval(verificationIntervalRef.current);
+    }
+  };
 
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
-  const handleCryptoSelect = (crypto) => {
-    setSelectedCrypto(crypto);
   };
 
   const generatePayment = () => {
@@ -47,8 +93,10 @@ const CryptoPayment = ({ ticketCount, participantInfo, onPaymentSuccess, onCance
       );
       
       setPaymentDetails(payment);
-      setCountdown(1800); // Redémarrer le compte à rebours
+      setCountdown(1800);
       setPaymentStatus('waiting');
+      setVerificationStatus(null);
+      setAutoVerify(true);
       
     } catch (error) {
       console.error('Erreur génération paiement:', error);
@@ -62,13 +110,12 @@ const CryptoPayment = ({ ticketCount, participantInfo, onPaymentSuccess, onCance
     setIsProcessing(true);
     
     try {
-      const status = await CryptoPaymentService.checkPaymentStatus(paymentDetails.paymentId);
+      const status = await CryptoPaymentService.verifyPayment(paymentDetails.paymentId);
+      setVerificationStatus(status);
       
       if (status.status === 'confirmed') {
         setPaymentStatus('confirmed');
         onPaymentSuccess(paymentDetails.paymentId);
-      } else {
-        alert('Paiement non encore confirmé. Vérifiez votre wallet.');
       }
     } catch (error) {
       alert('Erreur de vérification: ' + error.message);
@@ -79,7 +126,58 @@ const CryptoPayment = ({ ticketCount, participantInfo, onPaymentSuccess, onCance
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    alert('Adresse copiée dans le presse-papier !');
+    alert('Copié dans le presse-papier !');
+  };
+
+  // Rendu statut de vérification
+  const renderVerificationStatus = () => {
+    if (!verificationStatus) return null;
+
+    const statusConfig = {
+      confirmed: { color: 'green', icon: '✅', bgColor: 'bg-green-50', borderColor: 'border-green-200', textColor: 'text-green-800' },
+      pending: { color: 'yellow', icon: '⏳', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-200', textColor: 'text-yellow-800' },
+      not_found: { color: 'gray', icon: '🔍', bgColor: 'bg-gray-50', borderColor: 'border-gray-200', textColor: 'text-gray-800' },
+      error: { color: 'red', icon: '❌', bgColor: 'bg-red-50', borderColor: 'border-red-200', textColor: 'text-red-800' }
+    };
+
+    const config = statusConfig[verificationStatus.status] || { 
+      color: 'gray', 
+      icon: '❓', 
+      bgColor: 'bg-gray-50', 
+      borderColor: 'border-gray-200', 
+      textColor: 'text-gray-800' 
+    };
+
+    return (
+      <div className={`${config.bgColor} ${config.borderColor} border rounded-lg p-4 mb-4`}>
+        <div className="flex items-center gap-3">
+          <span className="text-xl">{config.icon}</span>
+          <div>
+            <div className={`font-semibold ${config.textColor}`}>
+              {verificationStatus.message}
+            </div>
+            {verificationStatus.transactionHash && (
+              <div className="text-sm text-gray-600 mt-1">
+                TX: {verificationStatus.transactionHash.substring(0, 20)}...
+                <a 
+                  href={CryptoPaymentService.getExplorerLink(paymentDetails.crypto, verificationStatus.transactionHash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:text-blue-700 ml-2"
+                >
+                  Voir sur l'explorer
+                </a>
+              </div>
+            )}
+            {verificationStatus.confirmations && (
+              <div className="text-xs text-gray-500 mt-1">
+                Confirmations: {verificationStatus.confirmations}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (paymentStatus === 'confirmed') {
@@ -91,11 +189,41 @@ const CryptoPayment = ({ ticketCount, participantInfo, onPaymentSuccess, onCance
           <p className="text-gray-600 mb-6">
             Votre paiement a été confirmé avec succès. Vos tickets sont en cours de génération.
           </p>
+          {verificationStatus?.transactionHash && (
+            <a 
+              href={CryptoPaymentService.getExplorerLink(paymentDetails.crypto, verificationStatus.transactionHash)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm mb-4"
+            >
+              🔗 Voir la transaction
+            </a>
+          )}
           <button
             onClick={() => window.location.reload()}
             className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition"
           >
             Continuer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (paymentStatus === 'expired') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+          <div className="text-6xl mb-4">⏰</div>
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">Paiement Expiré</h2>
+          <p className="text-gray-600 mb-6">
+            Le délai de paiement de 30 minutes est écoulé. Veuillez recommencer.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition"
+          >
+            Nouvelle tentative
           </button>
         </div>
       </div>
@@ -119,12 +247,29 @@ const CryptoPayment = ({ ticketCount, participantInfo, onPaymentSuccess, onCance
           </div>
 
           <div className="p-6">
+            {/* Statut de vérification */}
+            {renderVerificationStatus()}
+
+            {/* Contrôle vérification auto */}
+            <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
+              <input
+                type="checkbox"
+                id="autoVerify"
+                checked={autoVerify}
+                onChange={(e) => setAutoVerify(e.target.checked)}
+                className="text-blue-500 focus:ring-blue-500"
+              />
+              <label htmlFor="autoVerify" className="text-sm text-gray-700">
+                Vérification automatique (toutes les 15 secondes)
+              </label>
+            </div>
+
             {/* QR Code */}
             <div className="text-center mb-6">
               <img 
                 src={paymentDetails.qrCode} 
                 alt="QR Code de paiement"
-                className="mx-auto border-4 border-gray-200 rounded-lg"
+                className="mx-auto border-4 border-gray-200 rounded-lg w-48 h-48"
               />
               <p className="text-sm text-gray-600 mt-2">
                 Scannez avec votre wallet crypto
@@ -145,7 +290,7 @@ const CryptoPayment = ({ ticketCount, participantInfo, onPaymentSuccess, onCance
                 />
                 <button
                   onClick={() => copyToClipboard(paymentDetails.walletAddress)}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 rounded-lg transition"
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 rounded-lg transition flex items-center justify-center"
                 >
                   📋
                 </button>
@@ -178,7 +323,7 @@ const CryptoPayment = ({ ticketCount, participantInfo, onPaymentSuccess, onCance
                 disabled={isProcessing}
                 className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white py-3 rounded-lg font-semibold transition"
               >
-                {isProcessing ? 'Vérification...' : '✅ J\'ai payé'}
+                {isProcessing ? 'Vérification...' : '✅ Vérifier manuellement'}
               </button>
               
               <button
