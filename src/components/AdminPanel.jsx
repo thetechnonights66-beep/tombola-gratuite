@@ -16,6 +16,8 @@ const AdminPanel = () => {
   const [resetBallDrop, setResetBallDrop] = useState(0);
   const [snapshots, setSnapshots] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [showTransactions, setShowTransactions] = useState(false);
+  const [transactionStats, setTransactionStats] = useState(null);
 
   useEffect(() => {
     if (Auth.isAuthenticated()) {
@@ -30,6 +32,9 @@ const AdminPanel = () => {
 
       // Charger l'historique des snapshots
       setSnapshots(ParticipantHistory.getSnapshots());
+
+      // Charger les stats transactions
+      refreshTransactions();
     } else {
       window.location.hash = '#/admin-login';
     }
@@ -85,15 +90,82 @@ const AdminPanel = () => {
       loadRealData();
     }, 3000);
 
+    // ✅ SURVEILLANCE DES TRANSACTIONS
+    const transactionInterval = setInterval(() => {
+      refreshTransactions();
+    }, 10000); // Vérif toutes les 10 secondes
+
     // ✅ NETTOYAGE
     return () => {
       clearInterval(interval);
+      clearInterval(transactionInterval);
       EventSystem.off(EventSystem.EVENTS.TICKETS_UPDATED, handleTicketsUpdated);
       EventSystem.off(EventSystem.EVENTS.PARTICIPANTS_UPDATED, handleParticipantsUpdated);
       EventSystem.off(EventSystem.EVENTS.DRAW_RESET, handleDrawReset);
       EventSystem.off(EventSystem.EVENTS.PARTICIPANTS_RESET, handleParticipantsReset);
     };
   }, [isAuthenticated]);
+
+  // ✅ SURVEILLANCE DES TRANSACTIONS CRYPTO
+  const refreshTransactions = () => {
+    const payments = JSON.parse(localStorage.getItem('cryptoPendingPayments') || '{}');
+    const allPayments = Object.values(payments);
+    
+    const stats = {
+      total: allPayments.length,
+      pending: allPayments.filter(p => p.status === 'pending').length,
+      confirmed: allPayments.filter(p => p.status === 'confirmed').length,
+      expired: allPayments.filter(p => p.status === 'expired').length,
+      totalRevenue: allPayments
+        .filter(p => p.status === 'confirmed')
+        .reduce((sum, p) => sum + (p.amount || 0), 0),
+      recent: allPayments
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, 10)
+    };
+    
+    setTransactionStats(stats);
+  };
+
+  // ✅ NETTOYAGE DES TRANSACTIONS EXPIRÉES
+  const cleanupExpiredTransactions = () => {
+    const payments = JSON.parse(localStorage.getItem('cryptoPendingPayments') || '{}');
+    const now = new Date();
+    
+    Object.keys(payments).forEach(paymentId => {
+      const payment = payments[paymentId];
+      const paymentTime = new Date(payment.timestamp);
+      const expiryTime = new Date(paymentTime.getTime() + 30 * 60 * 1000); // 30 minutes
+      
+      if (now > expiryTime && payment.status === 'pending') {
+        payments[paymentId].status = 'expired';
+      }
+    });
+    
+    localStorage.setItem('cryptoPendingPayments', JSON.stringify(payments));
+    refreshTransactions();
+    showToast('🗑️ Transactions nettoyées', 'Paiements expirés mis à jour', 'blue');
+  };
+
+  // ✅ EXPORT DES TRANSACTIONS CSV
+  const exportTransactionsCSV = () => {
+    const payments = JSON.parse(localStorage.getItem('cryptoPendingPayments') || '{}');
+    const csvHeader = 'ID,Nom,Email,Montant,Crypto,Statut,Tickets,Date,Transaction Hash\n';
+    
+    const csvRows = Object.values(payments).map(payment => 
+      `"${payment.id}","${payment.participant?.name || 'N/A'}","${payment.participant?.email || 'N/A'}",${payment.amount},"${payment.crypto}","${payment.status}",${payment.ticketCount},"${payment.timestamp}","${payment.transactionHash || 'N/A'}"`
+    ).join('\n');
+    
+    const csv = csvHeader + csvRows;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transactions_tombola_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('📊 Export CSV', 'Transactions exportées avec succès');
+  };
 
   // ✅ MODIFIER handleWinnerSelected POUR WHATSAPP
   const handleWinnerSelected = (winner) => {
@@ -102,17 +174,15 @@ const AdminPanel = () => {
       ticketNumber: winner.ticketNumber,
       prize: `Lot ${winners.length + 1}`,
       time: new Date().toLocaleTimeString(),
-      phone: winner.phone // ✅ STOCKER LE TÉLÉPHONE
+      phone: winner.phone
     };
     
     const updatedWinners = [...winners, newWinner];
     setWinners(updatedWinners);
     localStorage.setItem('tombolaWinners', JSON.stringify(updatedWinners));
     
-    // ✅ ÉMETTRE UN ÉVÉNEMENT DE MISE À JOUR DES GAGNANTS
     EventSystem.emitWinnersUpdated(updatedWinners.length);
     
-    // ✅ CRÉER UN LIEN WHATSAPP POUR LE GAGNANT
     if (winner.phone) {
       const whatsappLink = WhatsAppService.generateWinnerLink(
         winner.phone,
@@ -121,14 +191,8 @@ const AdminPanel = () => {
         winner.ticketNumber
       );
       
-      // Afficher le lien à l'admin
-      showToast(
-        '📱 Lien WhatsApp Gagnant', 
-        `Lien créé pour ${winner.name}`,
-        'green'
-      );
+      showToast('📱 Lien WhatsApp Gagnant', `Lien créé pour ${winner.name}`, 'green');
       
-      // Option : ouvrir directement
       setTimeout(() => {
         if (window.confirm(`Ouvrir WhatsApp pour notifier ${winner.name} ?`)) {
           window.open(whatsappLink, '_blank');
@@ -137,9 +201,8 @@ const AdminPanel = () => {
     }
   };
 
-  // ✅ FONCTION POUR ACCÉDER AUX ANALYTICS AVANCÉS - VERSION CORRIGÉE
+  // ✅ FONCTION POUR ACCÉDER AUX ANALYTICS AVANCÉS
   const handleAnalyticsAccess = () => {
-    // ✅ CORRECTION : AUTORISER TOUS LES ADMINS AUTHENTIFIÉS
     const currentUser = Auth.getCurrentUser();
     if (currentUser) {
       window.location.hash = '#/analytics';
@@ -153,18 +216,15 @@ const AdminPanel = () => {
   const resetDraw = () => {
     if (window.confirm('🔄 Réinitialiser le tirage ?\n\n• Tous les gagnants seront effacés\n• Les tickets seront remis en jeu\n• L\'animation sera réinitialisée\n• Une sauvegarde sera créée')) {
       
-      // ✅ SAUVEGARDER AVANT RÉINITIALISATION
       const snapshotId = ParticipantHistory.saveParticipantsSnapshot(
         participants, 
         winners, 
         'reset_tirage'
       );
       
-      // Réinitialisation des gagnants
       setWinners([]);
       localStorage.removeItem('tombolaWinners');
       
-      // Réinitialisation du statut des tickets
       const tickets = TicketStorage.getTickets();
       const updatedTickets = tickets.map(ticket => ({
         ...ticket,
@@ -174,14 +234,10 @@ const AdminPanel = () => {
       }));
       localStorage.setItem('tombolaTickets', JSON.stringify(updatedTickets));
       
-      // ✅ ÉMETTRE L'ÉVÉNEMENT DE RÉINITIALISATION
       EventSystem.emitDrawReset('manual_reset');
       EventSystem.emitWinnersUpdated(0);
       
-      // ✅ RÉINITIALISATION DE L'ANIMATION
       setResetBallDrop(prev => prev + 1);
-      
-      // ✅ METTRE À JOUR L'HISTORIQUE
       setSnapshots(ParticipantHistory.getSnapshots());
       
       showToast('✅ Tirage réinitialisé', `Sauvegarde #${snapshotId.split('_')[1]} créée`);
@@ -192,35 +248,26 @@ const AdminPanel = () => {
   const resetParticipants = () => {
     if (window.confirm('⚠️ RÉINITIALISER TOUS LES PARTICIPANTS ?\n\nUne sauvegarde complète sera créée avant la suppression.')) {
       
-      // Double confirmation
       if (window.confirm(`❌ CONFIRMER LA SUPPRESSION :\n\n• ${participants.length} participant(s)\n• ${liveStats?.totalTickets || 0} ticket(s)\n• €${liveStats?.totalRevenue || 0} de recettes\n\nUne sauvegarde sera disponible dans l'historique.`)) {
         
-        // ✅ SAUVEGARDE COMPLÈTE AVANT SUPPRESSION
         const snapshotId = ParticipantHistory.saveParticipantsSnapshot(
           participants, 
           winners, 
           'reset_complet'
         );
         
-        // Supprimer tous les tickets
-        TicketStorage.clearAllTickets(); // ✅ CETTE FONCTION ÉMET DÉJÀ LES ÉVÉNEMENTS
+        TicketStorage.clearAllTickets();
         
-        // Réinitialiser tous les états
         setParticipants([]);
         setWinners([]);
         setLiveStats(null);
         
-        // Supprimer aussi les gagnants
         localStorage.removeItem('tombolaWinners');
         
-        // ✅ ÉMETTRE L'ÉVÉNEMENT DE RÉINITIALISATION
         EventSystem.emitParticipantsReset('manual_clear');
         EventSystem.emitWinnersUpdated(0);
         
-        // Réinitialiser l'animation
         setResetBallDrop(prev => prev + 1);
-        
-        // ✅ METTRE À JOUR L'HISTORIQUE
         setSnapshots(ParticipantHistory.getSnapshots());
         
         showToast('🗑️ Participants réinitialisés', `Sauvegarde #${snapshotId.split('_')[1]} créée`, 'orange');
@@ -238,7 +285,6 @@ const AdminPanel = () => {
       try {
         ParticipantHistory.restoreSnapshot(snapshotId);
         
-        // Recharger toutes les données
         loadRealData();
         const savedWinners = localStorage.getItem('tombolaWinners');
         if (savedWinners) {
@@ -247,7 +293,6 @@ const AdminPanel = () => {
         
         setSnapshots(ParticipantHistory.getSnapshots());
         
-        // ✅ ÉMETTRE LES ÉVÉNEMENTS DE MISE À JOUR
         EventSystem.emitTicketsUpdated(snapshot.totalTickets);
         EventSystem.emitParticipantsUpdated(snapshot.totalParticipants);
         EventSystem.emitWinnersUpdated(snapshot.winnersCount);
@@ -290,7 +335,6 @@ const AdminPanel = () => {
     
     console.log('📊 Rapport des emails suspects:', report);
     
-    // Afficher le rapport dans un modal
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
     modal.innerHTML = `
@@ -389,6 +433,7 @@ const AdminPanel = () => {
 
   const forceRefresh = () => {
     loadRealData();
+    refreshTransactions();
   };
 
   if (!isAuthenticated) {
@@ -404,7 +449,7 @@ const AdminPanel = () => {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* En-tête avec indicateur temps réel */}
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -414,68 +459,73 @@ const AdminPanel = () => {
               <span>En direct • Dernière mise à jour : {lastUpdate.toLocaleTimeString()}</span>
             </div>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={forceRefresh}
-              className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold"
+              className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold text-sm"
             >
               🔄 Actualiser
             </button>
             <button
               onClick={() => setShowHistory(!showHistory)}
-              className="bg-indigo-500 hover:bg-indigo-600 px-4 py-2 rounded-lg font-semibold"
+              className="bg-indigo-500 hover:bg-indigo-600 px-4 py-2 rounded-lg font-semibold text-sm"
             >
               📊 Historique
             </button>
             <button
+              onClick={() => setShowTransactions(!showTransactions)}
+              className="bg-teal-500 hover:bg-teal-600 px-4 py-2 rounded-lg font-semibold text-sm"
+            >
+              💎 Transactions
+            </button>
+            <button
               onClick={analyzeAllEmails}
-              className="bg-teal-500 hover:bg-teal-600 px-4 py-2 rounded-lg font-semibold"
+              className="bg-teal-500 hover:bg-teal-600 px-4 py-2 rounded-lg font-semibold text-sm"
               disabled={participants.length === 0}
             >
               🔍 Vérifier Emails
             </button>
             <button
               onClick={() => window.location.hash = '#/referral-admin'}
-              className="bg-indigo-500 hover:bg-indigo-600 px-4 py-2 rounded-lg font-semibold"
+              className="bg-indigo-500 hover:bg-indigo-600 px-4 py-2 rounded-lg font-semibold text-sm"
             >
               👥 Admin Parrainage
             </button>
             <button
               onClick={() => window.location.hash = '#/prize-manager'}
-              className="bg-pink-500 hover:bg-pink-600 px-4 py-2 rounded-lg font-semibold"
+              className="bg-pink-500 hover:bg-pink-600 px-4 py-2 rounded-lg font-semibold text-sm"
             >
               🎁 Gérer Lots
             </button>
-            {/* ✅ BOUTON ANALYTICS AVANCÉS CORRIGÉ */}
             <button
               onClick={handleAnalyticsAccess}
-              className="bg-teal-500 hover:bg-teal-600 px-4 py-2 rounded-lg font-semibold"
+              className="bg-teal-500 hover:bg-teal-600 px-4 py-2 rounded-lg font-semibold text-sm"
             >
               📊 Analytics Avancés
             </button>
             <button
               onClick={resetDraw}
-              className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold"
+              className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold text-sm"
               disabled={winners.length === 0}
             >
               🎯 Réinit. Tirage
             </button>
             <button
               onClick={generateTestParticipants}
-              className="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded-lg font-semibold"
+              className="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded-lg font-semibold text-sm"
             >
               🧪 Générer Test
             </button>
             <button
               onClick={resetParticipants}
-              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold"
+              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold text-sm"
               disabled={participants.length === 0}
             >
               🗑️ Réinit. Participants
             </button>
             <button
               onClick={handleLogout}
-              className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg font-semibold"
+              className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg font-semibold text-sm"
             >
               Déconnexion
             </button>
@@ -483,7 +533,7 @@ const AdminPanel = () => {
         </div>
 
         {/* STATISTIQUES EN TEMPS RÉEL */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-blue-600 p-4 rounded-lg">
             <div className="text-2xl font-bold">
               {liveStats ? liveStats.totalParticipants : participants.length}
@@ -517,6 +567,120 @@ const AdminPanel = () => {
               </div>
             )}
           </div>
+        </div>
+
+        {/* NOUVELLE SECTION : SURVEILLANCE DES TRANSACTIONS CRYPTO */}
+        <div className="bg-gray-800 rounded-lg p-6 mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">💎 Surveillance Transactions Crypto</h2>
+            <div className="flex gap-4 items-center">
+              <div className="text-sm text-gray-400">
+                Mise à jour automatique
+              </div>
+              <button
+                onClick={() => setShowTransactions(!showTransactions)}
+                className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold text-sm"
+              >
+                {showTransactions ? '🔼 Masquer' : '🔽 Afficher'}
+              </button>
+            </div>
+          </div>
+
+          {showTransactions && (
+            <div className="space-y-6">
+              {/* STATS TRANSACTIONS */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-blue-600 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold">{transactionStats?.total || 0}</div>
+                  <div className="text-blue-100">Total Transactions</div>
+                </div>
+                <div className="bg-yellow-600 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold">{transactionStats?.pending || 0}</div>
+                  <div className="text-yellow-100">En Attente</div>
+                </div>
+                <div className="bg-green-600 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold">{transactionStats?.confirmed || 0}</div>
+                  <div className="text-green-100">Confirmées</div>
+                </div>
+                <div className="bg-red-600 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold">€{transactionStats?.totalRevenue || 0}</div>
+                  <div className="text-red-100">Recettes Crypto</div>
+                </div>
+              </div>
+
+              {/* LISTE DES TRANSACTIONS RÉCENTES */}
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-lg font-semibold mb-3">🕒 Transactions Récentes</h3>
+                {transactionStats?.recent && transactionStats.recent.length > 0 ? (
+                  <div className="space-y-2">
+                    {transactionStats.recent.map((transaction, index) => (
+                      <div key={transaction.id} className={`p-3 rounded-lg ${
+                        transaction.status === 'confirmed' ? 'bg-green-500/20 border border-green-400' :
+                        transaction.status === 'pending' ? 'bg-yellow-500/20 border border-yellow-400' :
+                        'bg-red-500/20 border border-red-400'
+                      }`}>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <div className="font-semibold">
+                              {transaction.participant?.name || 'Anonyme'}
+                            </div>
+                            <div className="text-sm text-gray-300">
+                              {transaction.ticketCount} ticket(s) - {transaction.crypto}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold">€{transaction.amount}</div>
+                            <div className={`text-xs ${
+                              transaction.status === 'confirmed' ? 'text-green-300' :
+                              transaction.status === 'pending' ? 'text-yellow-300' : 'text-red-300'
+                            }`}>
+                              {transaction.status === 'confirmed' ? '✅ Confirmé' :
+                              transaction.status === 'pending' ? '⏳ En attente' : '❌ Expiré'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-400 mt-2">
+                          {new Date(transaction.timestamp).toLocaleString()}
+                          {transaction.transactionHash && (
+                            <span className="ml-2">
+                              TX: {transaction.transactionHash.substring(0, 15)}...
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-gray-400">
+                    <div className="text-4xl mb-2">💸</div>
+                    <p>Aucune transaction pour le moment</p>
+                  </div>
+                )}
+              </div>
+
+              {/* ACTIONS TRANSACTIONS */}
+              <div className="flex gap-3">
+                <button
+                  onClick={refreshTransactions}
+                  className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold text-sm"
+                >
+                  🔄 Actualiser Transactions
+                </button>
+                <button
+                  onClick={exportTransactionsCSV}
+                  className="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg font-semibold text-sm"
+                >
+                  📊 Export CSV
+                </button>
+                <button
+                  onClick={cleanupExpiredTransactions}
+                  className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-semibold text-sm"
+                >
+                  🗑️ Nettoyer Expirés
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ANIMATION BILLES TOMBANTES */}
@@ -692,7 +856,7 @@ const AdminPanel = () => {
                           'bg-blue-500 text-white'
                         }`}>
                           {participant.source === 'referral_reward' ? '🎁 Parrainage' :
-                           participant.source === 'test_generation' ? '🧪 Test' : '🛒 Achat'}
+                          participant.source === 'test_generation' ? '🧪 Test' : '🛒 Achat'}
                         </span>
                       </td>
                       <td className="p-2 text-sm text-gray-400">
@@ -723,8 +887,13 @@ const AdminPanel = () => {
               console.log('LiveStats:', liveStats);
               console.log('Gagnants:', winners);
               console.log('Snapshots:', snapshots);
+              console.log('TransactionStats:', transactionStats);
               console.log('ResetBallDrop counter:', resetBallDrop);
               TicketStorage.debugTickets();
+              
+              // Debug transactions
+              const payments = JSON.parse(localStorage.getItem('cryptoPendingPayments') || '{}');
+              console.log('Transactions Crypto:', payments);
             }}
             className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg text-sm"
           >
