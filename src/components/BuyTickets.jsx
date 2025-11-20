@@ -3,11 +3,12 @@ import { TicketStorage } from '../utils/ticketStorage';
 import { EmailVerification } from '../utils/emailVerification';
 import { ReferralSystem } from '../utils/referralSystem';
 import { WhatsAppService } from '../utils/whatsappService';
-import { AnalyticsService } from '../utils/analyticsService'; // ✅ IMPORT ANALYTICS
+import { AnalyticsService } from '../utils/analyticsService';
+import CryptoPayment from './CryptoPayment'; // ✅ IMPORT CRYPTO
 
 const BuyTickets = () => {
   const [ticketCount, setTicketCount] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [paymentMethod, setPaymentMethod] = useState('crypto'); // ✅ PAR DÉFAUT CRYPTO
   const [participantInfo, setParticipantInfo] = useState({
     name: '',
     email: '',
@@ -18,6 +19,7 @@ const BuyTickets = () => {
   const [allParticipants, setAllParticipants] = useState([]);
   const [referralCode, setReferralCode] = useState('');
   const [referralResult, setReferralResult] = useState(null);
+  const [showCryptoPayment, setShowCryptoPayment] = useState(false); // ✅ STATE CRYPTO
 
   // ✅ CHARGER LES PARTICIPANTS EXISTANTS
   useEffect(() => {
@@ -60,6 +62,7 @@ const BuyTickets = () => {
     return true;
   };
 
+  // ✅ NOUVELLE VERSION DE handlePurchase
   const handlePurchase = () => {
     // ✅ VÉRIFICATION RENFORCÉE AVANT ACHAT
     if (!participantInfo.name || !participantInfo.email) {
@@ -92,26 +95,7 @@ const BuyTickets = () => {
       return; // Arrêter si le parrainage échoue
     }
 
-    // ✅ GÉNÉRATION DES TICKETS (ça fonctionne)
-    const tickets = [];
-    for (let i = 0; i < ticketCount; i++) {
-      const ticketNumber = generateTicketNumber();
-      const ticket = TicketStorage.addTicket({
-        number: ticketNumber,
-        price: 5,
-        participant: participantInfo.name,
-        email: participantInfo.email,
-        phone: participantInfo.phone
-      });
-      tickets.push(ticket);
-    }
-
-    // ✅ VALIDER LE PARRAINAGE APRÈS ACHAT RÉUSSI
-    if (referralResult && referralResult.success) {
-      ReferralSystem.validateReferral(participantInfo.email);
-    }
-
-    // 📈 TRACKING ANALYTICS POUR L'ACHAT
+    // ✅ TRACKING ANALYTICS POUR L'ACHAT
     AnalyticsService.trackPurchase({
       amount: ticketCount * 5,
       ticketCount,
@@ -122,26 +106,8 @@ const BuyTickets = () => {
       paymentMethod: paymentMethod
     });
 
-    // 🚨 DEBUG CRITIQUE ICI 🚨
-    console.log('=== 🎯 DEBUG REDIRECTION ===');
-    console.log('Tickets générés:', tickets);
-    console.log('Participant info:', participantInfo);
-    
-    const queryParams = new URLSearchParams({
-      tickets: tickets.map(t => t.number).join(','),
-      name: participantInfo.name,
-      email: participantInfo.email,
-      phone: participantInfo.phone || '',
-      count: ticketCount,
-      amount: ticketCount * 5
-    });
-
-    const confirmationUrl = `#/confirmation?${queryParams.toString()}`;
-    console.log('🔗 URL COMPLÈTE:', confirmationUrl);
-    console.log('📋 Paramètres:', queryParams.toString());
-    
-    // ✅ REDIRECTION
-    window.location.assign(confirmationUrl);
+    // ✅ AFFICHER L'INTERFACE CRYPTO AU LIEU DE GÉNÉRER DIRECTEMENT
+    setShowCryptoPayment(true);
   };
 
   // ✅ TRACKING DES INTERACTIONS UTILISATEUR
@@ -384,38 +350,25 @@ const BuyTickets = () => {
           </div>
         </div>
 
-        {/* Méthode de paiement */}
+        {/* ✅ NOUVELLE SECTION MÉTHODE DE PAIEMENT - CRYPTO UNIQUEMENT */}
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-3">💳 Méthode de paiement</h3>
           <div className="space-y-2">
-            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition">
+            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition bg-purple-50 border-purple-200">
               <input
                 type="radio"
                 name="payment"
-                value="card"
-                checked={paymentMethod === 'card'}
-                onChange={(e) => {
-                  setPaymentMethod(e.target.value);
-                  trackInteraction('payment_selection', 'credit_card');
-                }}
+                value="crypto"
+                checked={true}
+                onChange={() => {}} // Crypto uniquement
                 className="text-purple-500 focus:ring-purple-500"
               />
-              <span>Carte bancaire</span>
+              <span className="font-semibold">💎 Crypto-monnaies (BTC, ETH, USDT, BNB, SOL)</span>
             </label>
-            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition">
-              <input
-                type="radio"
-                name="payment"
-                value="paypal"
-                checked={paymentMethod === 'paypal'}
-                onChange={(e) => {
-                  setPaymentMethod(e.target.value);
-                  trackInteraction('payment_selection', 'paypal');
-                }}
-                className="text-purple-500 focus:ring-purple-500"
-              />
-              <span>PayPal</span>
-            </label>
+            <p className="text-sm text-gray-600 p-2 bg-purple-50 rounded-lg">
+              🛡️ <strong>Paiement sécurisé en crypto-monnaies</strong><br/>
+              <span className="text-xs">Transactions rapides, anonymes et sécurisées avec cryptographie de niveau bancaire</span>
+            </p>
           </div>
         </div>
 
@@ -434,7 +387,7 @@ const BuyTickets = () => {
         >
           {(!participantInfo.name || !participantInfo.email) ? 'Remplissez vos informations' :
            emailValidation.status === 'faible' ? 'Email invalide - Corrigez' :
-           `Payer ${ticketCount * 5}€`}
+           `💎 Payer ${ticketCount * 5}€ en Crypto`}
         </button>
 
         {/* Information sur la validation */}
@@ -478,6 +431,58 @@ const BuyTickets = () => {
           </ul>
         </div>
       </div>
+
+      {/* ✅ MODAL CRYPTO PAYMENT */}
+      {showCryptoPayment && (
+        <CryptoPayment
+          ticketCount={ticketCount}
+          participantInfo={participantInfo}
+          onPaymentSuccess={(paymentId) => {
+            // Générer les tickets après paiement confirmé
+            const tickets = [];
+            for (let i = 0; i < ticketCount; i++) {
+              const ticketNumber = generateTicketNumber();
+              const ticket = TicketStorage.addTicket({
+                number: ticketNumber,
+                price: 5,
+                participant: participantInfo.name,
+                email: participantInfo.email,
+                phone: participantInfo.phone,
+                source: 'crypto_payment',
+                paymentId: paymentId
+              });
+              tickets.push(ticket);
+            }
+            
+            // ✅ VALIDER LE PARRAINAGE APRÈS ACHAT RÉUSSI
+            if (referralResult && referralResult.success) {
+              ReferralSystem.validateReferral(participantInfo.email);
+            }
+
+            // 🚨 DEBUG CRITIQUE ICI 🚨
+            console.log('=== 🎯 DEBUG REDIRECTION CRYPTO ===');
+            console.log('Tickets générés:', tickets);
+            console.log('Participant info:', participantInfo);
+            
+            const queryParams = new URLSearchParams({
+              tickets: tickets.map(t => t.number).join(','),
+              name: participantInfo.name,
+              email: participantInfo.email,
+              phone: participantInfo.phone || '',
+              count: ticketCount,
+              amount: ticketCount * 5
+            });
+
+            const confirmationUrl = `#/confirmation?${queryParams.toString()}`;
+            console.log('🔗 URL COMPLÈTE:', confirmationUrl);
+            console.log('📋 Paramètres:', queryParams.toString());
+            
+            // ✅ REDIRECTION
+            window.location.assign(confirmationUrl);
+          }}
+          onCancel={() => setShowCryptoPayment(false)}
+        />
+      )}
     </div>
   );
 };
