@@ -21,7 +21,7 @@ export const CryptoPaymentService = {
     ETH: {
       name: 'Etherscan',
       apiUrl: 'https://api.etherscan.io/api',
-      apiKey: 'VOTRE_CLE_ETHERSCAN', // Obtenez-la sur etherscan.io
+      apiKey: 'ADNDRBTM5IEFTF9RII3U1BWWIDI9A19PFI', // Obtenez-la sur etherscan.io
       addressUrl: 'https://api.etherscan.io/api?module=account&action=txlist&address=',
       requiredConfirmations: 12
     },
